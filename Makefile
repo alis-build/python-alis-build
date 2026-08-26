@@ -1,7 +1,7 @@
-.PHONY: sync lint fmt typecheck test check build clean check-pip new
+.PHONY: sync lint fmt typecheck test check build clean check-pip check-bare new
 
 sync:
-	uv sync --all-packages
+	uv sync --all-packages --all-extras
 
 lint:
 	uv run ruff check .
@@ -35,10 +35,19 @@ build:
 check-pip: build
 	uv run python scripts/check_pip_install.py
 
+# Prove the core works with none of the extras installed.
+check-bare:
+	rm -rf dist .bare
+	uv build --package alis-build-iam --out-dir dist
+	python3 -m venv .bare
+	.bare/bin/pip install --quiet dist/*.whl
+	python3 scripts/check_bare_core.py .bare/bin/python
+	rm -rf .bare
+
 new:
 	@test -n "$(NAME)" || (echo "usage: make new NAME=<package>" && exit 1)
 	uv run python scripts/new_package.py $(NAME)
 
 clean:
-	rm -rf dist .pytest_cache .mypy_cache .ruff_cache
+	rm -rf dist .bare .pytest_cache .mypy_cache .ruff_cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

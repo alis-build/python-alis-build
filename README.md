@@ -7,7 +7,7 @@ Monorepo of Python packages for builders on the
 
 | Package | PyPI | Import | Description |
 | --- | --- | --- | --- |
-| `packages/iam` | [`alis-build-iam`](https://pypi.org/project/alis-build-iam/) | `alis.build.iam` | Authentication and authorization |
+| `packages/iam` | [`alis-build-iam`](https://pypi.org/project/alis-build-iam/) | `alis.build.iam` | Authentication and authorization. Dependency-free core; gRPC, authz and authn behind extras. |
 
 Every package publishes independently to PyPI and installs with plain `pip`.
 The shared `alis.build.*` import prefix is a [PEP 420][pep420] implicit
@@ -31,11 +31,17 @@ make fmt           # autofix: ruff format/fix + taplo fmt
 make check         # lint + typecheck + test
 make build         # build sdist + wheel for every package
 make check-pip     # build, then install each wheel with plain pip in a clean venv
+make check-bare    # prove the core works with none of its extras installed
 ```
 
 `make check-pip` is the guard on the "must work with normal pip" requirement —
 it installs the built wheels into a bare `venv` using `pip` only, with uv
 nowhere in the picture, and imports them.
+
+`make check-bare` guards the other packaging promise: that a package's core
+installs with no dependencies, and that importing a subpackage without its
+extra names the extra to install rather than failing with a raw
+`ModuleNotFoundError`. Both run in CI.
 
 ### Adding a package
 

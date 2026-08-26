@@ -21,13 +21,29 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - run: uv sync --all-packages --python ${{ matrix.python-version }}
+      - run: uv sync --all-packages --all-extras --python ${{ matrix.python-version }}
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run taplo fmt --check
       # via make so the zero-package guards apply
       - run: make typecheck
       - run: make test
+
+  # Guards the promise that the core has no dependencies, and that a missing
+  # extra fails with a message naming what to install rather than a raw
+  # ModuleNotFoundError from somewhere inside the package.
+  bare-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build --package alis-build-iam --out-dir dist
+      - run: python -m venv .bare
+      - run: .bare/bin/pip install --quiet dist/*.whl
+      - run: python scripts/check_bare_core.py .bare/bin/python
 
   # Guards the "installable with plain pip" requirement: build the wheels, then
   # install and import them in a stock venv with uv nowhere in the picture.

@@ -13,6 +13,7 @@ __pycache__/
 
 .venv/
 venv/
+.bare/
 
 # Tooling
 .mypy_cache/
