@@ -55,6 +55,7 @@ from ._levels import (
     level_for,
     severity_for,
 )
+from ._local import LocalFormatter
 from ._trace import TRACE_HEADER, TraceContext, parse_trace_context
 
 __version__ = "0.1.0"
@@ -75,6 +76,7 @@ __all__ = [
     "CloudLoggingFormatter",
     "ConfigurationError",
     "HttpRequest",
+    "LocalFormatter",
     "LogOperation",
     "MissingDependencyError",
     "Severity",

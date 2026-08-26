@@ -15,7 +15,16 @@ import pytest
 from alis.build.alog._trace import reset_project_id
 
 _PROJECT_VARS = ("ALIS_OS_PROJECT", "GOOGLE_CLOUD_PROJECT", "GCLOUD_PROJECT")
-_RUNTIME_VARS = ("K_SERVICE", "CLOUD_RUN_JOB", "KUBERNETES_SERVICE_HOST", "ALOG_LEVEL", "ALOG_MODE")
+_RUNTIME_VARS = (
+    "K_SERVICE",
+    "CLOUD_RUN_JOB",
+    "KUBERNETES_SERVICE_HOST",
+    "ALOG_LEVEL",
+    "ALOG_MODE",
+    "ALOG_COLOR",
+    "NO_COLOR",
+    "TERM",
+)
 
 FIXED_TIME = 1756209600.123456
 """Chosen so every expected line can spell its timestamp out as a literal."""
