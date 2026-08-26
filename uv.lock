@@ -6,6 +6,17 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "alis-build-iam",
+    "python-alis-build",
+]
+
+[[package]]
+name = "alis-build-iam"
+version = "0.1.0"
+source = { editable = "packages/iam" }
+
 [[package]]
 name = "ast-serialize"
 version = "0.8.0"
@@ -478,6 +489,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "alis-build-iam" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -490,6 +502,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "alis-build-iam", editable = "packages/iam" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4" },

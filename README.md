@@ -5,7 +5,9 @@ Monorepo of Python packages for builders on the
 
 ## Packages
 
-None yet. See [Adding a package](#adding-a-package).
+| Package | PyPI | Import | Description |
+| --- | --- | --- | --- |
+| `packages/iam` | [`alis-build-iam`](https://pypi.org/project/alis-build-iam/) | `alis.build.iam` | Authentication and authorization |
 
 Every package publishes independently to PyPI and installs with plain `pip`.
 The shared `alis.build.*` import prefix is a [PEP 420][pep420] implicit

@@ -13,8 +13,13 @@ package = false
 [tool.uv.workspace]
 members = ["packages/*"]
 
+# Resolve every member from the local tree instead of PyPI during dev.
+[tool.uv.sources]
+alis-build-iam = { workspace = true }
+
 [dependency-groups]
 dev = [
+    "alis-build-iam",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4",
@@ -44,8 +49,7 @@ strict = true
 # Namespace packages have no __init__.py, so mypy needs to be told.
 namespace_packages = true
 explicit_package_bases = true
-# Each package adds its src/ dir here, colon-separated: "packages/<name>/src".
-mypy_path = ""
+mypy_path = "packages/iam/src"
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
