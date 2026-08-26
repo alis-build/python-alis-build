@@ -61,3 +61,18 @@ class MemberResolverConflictError(AuthorizationError):
 
 class RegistryFrozenError(AuthorizationError):
     """The registry was modified after being frozen for serving."""
+
+
+class PolicyFetchError(AuthorizationError):
+    """Fetching a resource's policy failed.
+
+    The underlying failure is kept as the exception's cause.
+    """
+
+    def __init__(self, resource: str, /) -> None:
+        super().__init__(f"fetching the policy for {resource!r} failed")
+        self.resource = resource
+
+
+class PoolExhaustedError(AuthorizationError):
+    """A policy pool was gathered more than once."""
