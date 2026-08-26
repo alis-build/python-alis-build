@@ -17,10 +17,12 @@ members = ["packages/*"]
 
 # Resolve every member from the local tree instead of PyPI during dev.
 [tool.uv.sources]
+alis-build-alog = { workspace = true }
 alis-build-iam = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "alis-build-alog",
     "alis-build-iam[authn,authz,grpc]",
     "git-cliff>=2.13",
     "mypy>=2.3.1",
@@ -53,7 +55,7 @@ strict = true
 # Namespace packages have no __init__.py, so mypy needs to be told.
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "packages/iam/src"
+mypy_path = ["packages/alog/src", "packages/iam/src"]
 
 # grpcio and the generated IAM protos ship no py.typed, so their symbols
 # arrive as Any. types-protobuf covers google.protobuf itself.

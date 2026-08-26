@@ -7,6 +7,7 @@ Monorepo of Python packages for builders on the
 
 | Package | PyPI | Import | Description |
 | --- | --- | --- | --- |
+| `packages/alog` | [`alis-build-alog`](https://pypi.org/project/alis-build-alog/) | `alis.build.alog` | Structured logging for Cloud Logging. Dependency-free core; gRPC trace correlation behind an extra. |
 | `packages/iam` | [`alis-build-iam`](https://pypi.org/project/alis-build-iam/) | `alis.build.iam` | Authentication and authorization. Dependency-free core; gRPC, authz and authn behind extras. |
 
 Every package publishes independently to PyPI and installs with plain `pip`.
