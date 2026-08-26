@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Alis Build platform
+    url: https://alisx.com/build
+    about: What the platform is, and how Define, Build and Deploy fit together.
+  - name: Security problem
+    url: https://github.com/alis-build/python-alis-build/security/advisories/new
+    about: Report a vulnerability privately. Please do not open a public issue.

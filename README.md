@@ -53,6 +53,12 @@ Scaffolds `packages/lro` with the `alis.build.lro` import path, then register it
 in the root `pyproject.toml` (`[tool.uv.sources]` and the `dev` group) and in
 the table above.
 
+## Contributing
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development workflow,
+code style, commit-message convention, and how to add a package. Security
+problems go through [SECURITY.md](SECURITY.md) rather than a public issue.
+
 ## Releasing
 
 Each package versions independently. Bump `version` in the package's
@@ -64,10 +70,18 @@ git tag iam-v0.1.0
 git push origin iam-v0.1.0
 ```
 
-The `publish` workflow builds that one package and uploads it to PyPI via
-[Trusted Publishing][tp] (OIDC — no API tokens stored in the repo).
+The `publish` workflow rebuilds that package's changelog, then builds and
+uploads the package to PyPI via [Trusted Publishing][tp] (OIDC — no API tokens
+stored in the repo).
 
 [tp]: https://docs.pypi.org/trusted-publishers/
+
+Changelogs are generated from commit subjects, so they are only as good as the
+messages. Follow [Conventional Commits][cc]; `feat`, `fix`, `perf`, `refactor`,
+`docs` and `revert` appear in the changelog, and `chore`, `test`, `ci`, `build`
+and `style` do not. Rebuild one by hand with `make changelog PKG=<name>`.
+
+[cc]: https://www.conventionalcommits.org
 
 ## License
 

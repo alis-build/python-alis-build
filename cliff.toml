@@ -1,0 +1,70 @@
+# Changelog generation. Each package gets its own CHANGELOG.md, built from the
+# commits that touched it and the tags that released it:
+#
+#     make changelog PKG=iam
+#
+# Commit subjects are the source, so they are worth writing carefully. Anything
+# not in Conventional Commits form is skipped, and chores, tests and CI changes
+# are left out -- a changelog is for people upgrading the package, not a log of
+# every commit.
+
+[changelog]
+# Substituted into the links below.
+postprocessors = [
+    { pattern = '\$REPO', replace = "https://github.com/alis-build/python-alis-build" },
+]
+
+header = """
+# Changelog
+
+All notable changes to this package are documented here. The format follows
+[Conventional Commits](https://www.conventionalcommits.org), and versions
+follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n
+"""
+
+body = """
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="iam-v") }}](\
+$REPO/compare/{{ previous.version }}...{{ version }}) ({{ timestamp | date(format="%Y-%m-%d") }})
+    {% else %}\
+        ## {{ version | trim_start_matches(pat="iam-v") }} ({{ timestamp | date(format="%Y-%m-%d") }})
+    {% endif %}\
+{% else %}\
+    ## Unreleased
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+
+### {{ group | upper_first }}
+{% for commit in commits %}
+* {{ commit.message }} ([{{ commit.id | truncate(length=7, end="") }}]($REPO/commit/{{ commit.id }}))\
+{% endfor %}\
+{% endfor %}\n
+"""
+
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = true
+topo_order = false
+sort_commits = "oldest"
+tag_pattern = ".*-v[0-9]+.*"
+
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactoring" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^revert", group = "Reverts" },
+    # Everything below is invisible to someone upgrading the package.
+    { message = "^chore", skip = true },
+    { message = "^test", skip = true },
+    { message = "^ci", skip = true },
+    { message = "^build", skip = true },
+    { message = "^style", skip = true },
+]

@@ -1,0 +1,93 @@
+name: Bug report
+description: Something behaves differently from what the documentation says
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more of the below you can
+        fill in, the faster it can be diagnosed.
+
+        If this is a **security** problem, please close this and
+        [report it privately](https://github.com/alis-build/python-alis-build/security/advisories/new)
+        instead.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - alis-build-iam
+        - other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you thought would happen, and what led you to expect it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: |
+        What happened instead. Paste the full traceback if there is one.
+
+        Please redact tokens, policies and identities before pasting.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: |
+        The smallest piece of code that shows the problem, ideally something
+        that can be run as-is.
+      render: python
+    validations:
+      required: true
+
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      description: For example `0.1.0`, or the commit SHA if installed from git.
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output of `python -V`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extras and relevant dependency versions
+      description: |
+        Which extras are installed (`grpc`, `authz`, `authn`), and the versions
+        of anything relevant — `grpcio`, `httpx`, `cryptography`,
+        `grpc-google-iam-v1`. `pip list` output is fine.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Server flavour (asyncio or blocking), web framework, how the
+        service is deployed — whatever seems relevant.

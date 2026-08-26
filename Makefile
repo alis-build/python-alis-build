@@ -1,4 +1,4 @@
-.PHONY: sync lint fmt typecheck test check build clean check-pip check-bare new
+.PHONY: sync lint fmt typecheck test check build clean check-pip check-bare changelog new
 
 sync:
 	uv sync --all-packages --all-extras
@@ -43,6 +43,14 @@ check-bare:
 	.bare/bin/pip install --quiet dist/*.whl
 	python3 scripts/check_bare_core.py .bare/bin/python
 	rm -rf .bare
+
+# Rebuild one package's changelog from the commits that touched it.
+changelog:
+	@test -n "$(PKG)" || (echo "usage: make changelog PKG=<package>" && exit 1)
+	uv run git-cliff --config cliff.toml \
+		--include-path "packages/$(PKG)/**" \
+		--tag-pattern "$(PKG)-v[0-9].*" \
+		--output packages/$(PKG)/CHANGELOG.md
 
 new:
 	@test -n "$(NAME)" || (echo "usage: make new NAME=<package>" && exit 1)

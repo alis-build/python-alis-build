@@ -6,6 +6,44 @@ on:
     tags: ["*-v*"]
 
 jobs:
+  # Rebuilds the package's changelog from the commits the tag covers and pushes
+  # it to the default branch. It is deliberately not part of the published
+  # artifact: the wheel is built from the tagged commit exactly, and a file
+  # written after the tag could not be in it without publishing something the
+  # tag does not point at.
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # git-cliff needs the whole history to know what each tag covers.
+          fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Rebuild the changelog
+        run: |
+          package="${GITHUB_REF_NAME%-v*}"
+          uv run --with git-cliff git-cliff --config cliff.toml \
+            --include-path "packages/${package}/**" \
+            --tag-pattern "${package}-v[0-9].*" \
+            --output "packages/${package}/CHANGELOG.md"
+
+      - name: Commit it if it changed
+        run: |
+          package="${GITHUB_REF_NAME%-v*}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- "packages/${package}/CHANGELOG.md"; then
+            echo "changelog already up to date"
+            exit 0
+          fi
+          git add "packages/${package}/CHANGELOG.md"
+          git commit -m "docs(${package}): changelog for ${GITHUB_REF_NAME}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
+
   publish:
     runs-on: ubuntu-latest
     environment: pypi

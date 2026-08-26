@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest a capability or an improvement to an existing one
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describing the problem you hit is more useful than describing the
+        solution you have in mind — it leaves room for a better one.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - alis-build-iam
+        - a new package
+        - other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The use case, and what makes it awkward today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help?
+      description: |
+        A sketch of the API or behaviour you have in mind, if you have one. A
+        rough example of the code you wish you could write is ideal.
+      render: python
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried?
+      description: Workarounds you are using, and why they fall short.
+
+  - type: checkboxes
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - label: This would change behaviour that existing services depend on
+        - label: This would change a wire format shared with other services

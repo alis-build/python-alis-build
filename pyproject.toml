@@ -20,6 +20,7 @@ alis-build-iam = { workspace = true }
 [dependency-groups]
 dev = [
     "alis-build-iam[authn,authz,grpc]",
+    "git-cliff>=2.13",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4",
