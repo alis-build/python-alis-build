@@ -139,12 +139,39 @@ Each package versions independently.
    package's `__init__.py`. They must match, and the release workflow refuses to
    build if the tag disagrees with them.
 2. Merge to `main`.
-3. Tag and push:
+3. Tag and push. The tag is what starts the release:
 
    ```shell
    git tag iam/v0.2.0
    git push origin iam/v0.2.0
    ```
+
+### The tag
+
+```
+<package-directory>/v<major>.<minor>.<patch>[suffix]
+```
+
+The package directory is its name under `packages/`, one level only. The three
+version numbers are required, and a pre-release suffix is allowed, so
+`iam/v1.0.0rc1` and `iam/v1.0.0.post1` both release.
+
+Anything else is ignored by the release workflow rather than refused by it, so
+a tag that looks close enough but is not release-shaped simply does nothing:
+
+| Tag | |
+| --- | --- |
+| `iam/v0.2.0` | releases |
+| `iam/v1.0.0rc1` | releases a pre-release |
+| `iam/v1.0` | ignored, not a full version |
+| `iam/v-next` | ignored, a moving pointer rather than a release |
+| `iam/verify` | ignored |
+| `v0.2.0` | ignored, names no package |
+
+That is deliberate: a pointer tag being moved should never publish anything.
+The workflow then checks that the package exists and that its declared version
+matches the tag, and refuses to build if either is wrong — so a typo in the
+version fails loudly rather than publishing the wrong thing.
 
 The workflow rebuilds the changelog, then builds and uploads that one package to
 PyPI through [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so
