@@ -28,6 +28,14 @@ Module                   Extra        Purpose
 
 from __future__ import annotations
 
+from ._cloud import CloudLoggingFormatter
+from ._context import (
+    BoundContext,
+    HttpRequest,
+    LogOperation,
+    bind,
+    current,
+)
 from ._errors import (
     AlogError,
     ConfigurationError,
@@ -47,6 +55,7 @@ from ._levels import (
     level_for,
     severity_for,
 )
+from ._trace import TRACE_HEADER, TraceContext, parse_trace_context
 
 __version__ = "0.1.0"
 
@@ -59,12 +68,21 @@ __all__ = [
     "INFO",
     "NOTICE",
     "NOTSET",
+    "TRACE_HEADER",
     "WARNING",
     "AlogError",
+    "BoundContext",
+    "CloudLoggingFormatter",
     "ConfigurationError",
+    "HttpRequest",
+    "LogOperation",
     "MissingDependencyError",
     "Severity",
+    "TraceContext",
     "__version__",
+    "bind",
+    "current",
     "level_for",
+    "parse_trace_context",
     "severity_for",
 ]
