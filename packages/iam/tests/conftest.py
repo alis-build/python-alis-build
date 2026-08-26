@@ -8,11 +8,12 @@ that address for every test that runs afterwards.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
 from alis.build.iam import Identity, IdentityType, SystemConfig
-from alis.build.iam.testing import fresh_system_config
+from alis.build.iam.testing import fresh_authz_registry, fresh_system_config
 
 
 @pytest.fixture(autouse=True)
@@ -32,3 +33,21 @@ def user() -> Identity:
         email="john@example.com",
         group_ids=["df913r888"],
     )
+
+
+@pytest.fixture
+def registry() -> Iterator[Any]:
+    """An empty authorization registry, stricter than the production default."""
+    with fresh_authz_registry() as value:
+        yield value
+
+
+@pytest.fixture
+def lenient_registry() -> Iterator[Any]:
+    """An authorization registry configured the way production is."""
+    from alis.build.iam.authz import ConditionMode
+
+    with fresh_authz_registry(
+        strict_permissions=False, condition_mode=ConditionMode.ALLOW
+    ) as value:
+        yield value

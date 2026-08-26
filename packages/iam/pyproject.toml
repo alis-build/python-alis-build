@@ -27,6 +27,10 @@ dependencies = []
 
 [project.optional-dependencies]
 grpc = ["grpcio>=1.60"]
+# grpc-google-iam-v1 is what actually ships google.iam.v1; vendoring the
+# generated policy module instead would register the same descriptor twice
+# for anyone who also installs it. It pulls grpcio transitively.
+authz = ["grpc-google-iam-v1>=0.14", "protobuf>=4.25"]
 
 [project.urls]
 Homepage = "https://alisx.com/build"

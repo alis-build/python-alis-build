@@ -33,3 +33,31 @@ class MissingDependencyError(IamError, ImportError):
     Subclasses :class:`ImportError` so ``except ImportError`` and
     ``pytest.importorskip`` behave as callers expect.
     """
+
+
+class AuthorizationError(IamError):
+    """Base class for authorization problems."""
+
+
+class InvalidPolicyError(AuthorizationError, ValueError):
+    """An identity's embedded policy could not be decoded."""
+
+
+class UnknownPermissionError(AuthorizationError, KeyError):
+    """A permission was checked that no role grants.
+
+    Only raised when the registry is in strict mode; otherwise an unknown
+    permission is simply denied.
+    """
+
+
+class ConditionalBindingError(AuthorizationError):
+    """A policy binding carries a condition the registry refuses to ignore."""
+
+
+class MemberResolverConflictError(AuthorizationError):
+    """A resolver is already registered for a member type."""
+
+
+class RegistryFrozenError(AuthorizationError):
+    """The registry was modified after being frozen for serving."""
