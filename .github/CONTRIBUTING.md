@@ -91,6 +91,12 @@ Then register it in the root `pyproject.toml` (`[tool.uv.sources]`, the `dev`
 group, and `mypy_path`) and add a row to the table in the root README. The
 scaffold prints the same reminder.
 
+Packages live **one level** under `packages/`, and the name is a lowercase
+identifier — no nesting. Release tags are `<package>/v<version>`, so a nested
+package would need both the release trigger and the tag parsing widened
+together. The scaffold refuses anything else, and the workspace only looks one
+level deep.
+
 Keep a package's core dependency-free and put anything needing a third-party
 library behind an extra, so installing it stays cheap for consumers who only use
 part of it.
