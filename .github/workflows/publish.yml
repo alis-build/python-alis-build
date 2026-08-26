@@ -3,7 +3,13 @@ name: publish
 # Tag one package to release it: <package-dir>/v<version>, e.g. iam/v0.1.0
 on:
   push:
-    tags: ["*/v*"]
+    # The version part is spelled out so only a release tag can start a
+    # release. A looser "*/v*" also matches iam/verify and iam/v-next, and a
+    # moving pointer tag firing a publish is not a mistake worth allowing.
+    # In these patterns "*" stops at a "/", "+" means one or more of the
+    # preceding character, and a trailing "*" leaves room for a pre-release
+    # suffix such as v1.0.0rc1.
+    tags: ["*/v[0-9]+.[0-9]+.[0-9]+*"]
 
 jobs:
   # Rebuilds the package's changelog from the commits the tag covers and pushes
