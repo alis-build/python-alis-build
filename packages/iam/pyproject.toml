@@ -6,7 +6,11 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-authors = [{ name = "Alis Build", email = "hello@alis.build" }]
+authors = [
+    { name = "Alis Build", email = "admin@alis.build" },
+    { name = "Alis Build", email = "admin@alis.build" },
+    { name = "Alis Build", email = "admin@alis.build" },
+]
 keywords = ["alis", "iam", "auth", "authn", "authz", "grpc"]
 classifiers = [
     "Development Status :: 3 - Alpha",
