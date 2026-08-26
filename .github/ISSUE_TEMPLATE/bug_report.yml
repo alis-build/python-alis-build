@@ -17,6 +17,7 @@ body:
     attributes:
       label: Package
       options:
+        - alis-build-alog
         - alis-build-iam
         - other / not sure
     validations:

@@ -30,6 +30,16 @@ is in scope. Some examples:
 - An identity leaking between concurrent requests, or between requests sharing a
   server thread.
 
+`alis-build-alog` writes what a service records about itself, so anything that
+lets one log line be mistaken for another, or lets one request's metadata land
+on another's line, is in scope. Some examples:
+
+- A message that produces more than one log entry, or that ends an entry early.
+- A field a caller controls displacing a key the log format defines, such as
+  `severity` or the trace.
+- Bound metadata leaking between concurrent requests, or between requests
+  sharing a server thread.
+
 ## Not vulnerabilities
 
 Some behaviours look alarming but are deliberate and documented. Reporting them
