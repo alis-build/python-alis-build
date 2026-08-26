@@ -74,6 +74,10 @@ The `publish` workflow rebuilds that package's changelog, then builds and
 uploads the package to PyPI via [Trusted Publishing][tp] (OIDC — no API tokens
 stored in the repo).
 
+A package's **first** release needs a trusted publisher registered on PyPI
+first, which is a one-time job per package — see
+[the first release of a package](.github/CONTRIBUTING.md#the-first-release-of-a-package).
+
 [tp]: https://docs.pypi.org/trusted-publishers/
 
 Changelogs are generated from commit subjects, so they are only as good as the

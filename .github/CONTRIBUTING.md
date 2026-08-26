@@ -95,6 +95,9 @@ Keep a package's core dependency-free and put anything needing a third-party
 library behind an extra, so installing it stays cheap for consumers who only use
 part of it.
 
+Before the new package can be released, it needs its own trusted publisher on
+PyPI — see [The first release of a package](#the-first-release-of-a-package).
+
 ## Making a change
 
 1. **Prefer small pull requests** — one logical change each.
@@ -140,6 +143,39 @@ Each package versions independently.
 The workflow rebuilds the changelog, then builds and uploads that one package to
 PyPI through [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so
 no API token is stored in the repository.
+
+### The first release of a package
+
+Trusted Publishing has to be told which workflow is allowed to publish which
+project, and that is done once per package by someone with PyPI admin rights.
+Until it exists, a tag push fails at the upload step.
+
+Because the project does not exist on PyPI yet, register a **pending
+publisher** at [pypi.org/manage/account/publishing](https://pypi.org/manage/account/publishing/).
+Every field has to match exactly:
+
+| Field | Value |
+| ----- | ----- |
+| PyPI Project Name | the distribution name, for example `alis-build-iam` |
+| Owner | `alis-build` |
+| Repository name | `python-alis-build` |
+| Workflow name | `publish.yml` — the filename only, not a path |
+| Environment name | `pypi` |
+
+The pending publisher becomes an ordinary one on the project as soon as the
+first release lands, so this is not needed again for that package.
+
+A mismatch in any field surfaces as an OIDC or permissions error at upload
+time rather than as "your configuration does not match", so it is worth
+checking them character by character before tagging. Two other prerequisites:
+the PyPI account needs two-factor authentication enabled, and the distribution
+name has to be free.
+
+Nothing needs to go in GitHub secrets. The repository already has the `pypi`
+environment and the workflow already requests the `id-token: write` permission
+that Trusted Publishing uses. The environment is also where to add a required
+reviewer if you want a person to approve a release before it reaches PyPI;
+without one, pushing the tag publishes immediately.
 
 ## Security
 
