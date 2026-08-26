@@ -31,6 +31,7 @@ grpc = ["grpcio>=1.60"]
 # generated policy module instead would register the same descriptor twice
 # for anyone who also installs it. It pulls grpcio transitively.
 authz = ["grpc-google-iam-v1>=0.14", "protobuf>=4.25"]
+authn = ["cryptography>=42", "httpx>=0.27"]
 
 [project.urls]
 Homepage = "https://alisx.com/build"

@@ -76,3 +76,56 @@ class PolicyFetchError(AuthorizationError):
 
 class PoolExhaustedError(AuthorizationError):
     """A policy pool was gathered more than once."""
+
+
+class AuthenticationError(IamError):
+    """Base class for authentication problems."""
+
+
+class InvalidTokenError(AuthenticationError, ValueError):
+    """A token is malformed, or its claims do not hold up."""
+
+
+class TokenExpiredError(InvalidTokenError):
+    """A token's expiry has passed."""
+
+
+class InvalidAudienceError(InvalidTokenError):
+    """A token was issued for a different audience."""
+
+
+class SignatureVerificationError(InvalidTokenError):
+    """A token's signature does not verify against the issuer's key."""
+
+
+class UnknownSigningKeyError(SignatureVerificationError):
+    """The issuer has no published key matching the token's key id."""
+
+
+class TokenEndpointError(AuthenticationError):
+    """The authorization server refused a token request."""
+
+    def __init__(self, status: int, body: str, /) -> None:
+        super().__init__(f"the token endpoint returned {status}: {body}")
+        self.status = status
+        self.body = body
+
+
+class LoginError(AuthenticationError):
+    """A login could not be completed."""
+
+
+class LoginStateMismatchError(LoginError):
+    """The state returned by the authorization server does not match the request.
+
+    This is the cross-site request forgery check, so a mismatch means the
+    callback should be refused outright rather than retried.
+    """
+
+
+class LoginExpiredError(LoginError):
+    """The login took longer than the transaction was valid for."""
+
+
+class NonceMismatchError(LoginError):
+    """An identity token's nonce does not match the one the login sent."""
