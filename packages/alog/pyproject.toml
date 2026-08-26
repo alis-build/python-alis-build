@@ -26,6 +26,12 @@ classifiers = [
 # that reads a transport lives behind an extra.
 dependencies = []
 
+[project.optional-dependencies]
+# Only for reading trace correlation off incoming call metadata. Formatting a
+# log line never needs it, so a service that is not a gRPC server should not
+# have to install it.
+grpc = ["grpcio>=1.60"]
+
 [project.urls]
 Homepage = "https://alisx.com/build"
 Repository = "https://github.com/alis-build/python-alis-build"

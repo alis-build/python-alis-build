@@ -35,14 +35,16 @@ build:
 check-pip: build
 	uv run python scripts/check_pip_install.py
 
-# Prove the core works with none of the extras installed.
+# Prove each package's core works with none of its extras installed.
 check-bare:
-	rm -rf dist .bare
-	uv build --package alis-build-iam --out-dir dist
-	python3 -m venv .bare
-	.bare/bin/pip install --quiet dist/*.whl
-	python3 scripts/check_bare_core.py .bare/bin/python
-	rm -rf .bare
+	@for pkg in $$(ls packages); do \
+		rm -rf dist .bare; \
+		uv build --package alis-build-$$pkg --out-dir dist || exit 1; \
+		python3 -m venv .bare; \
+		.bare/bin/pip install --quiet dist/*.whl || exit 1; \
+		python3 scripts/check_bare_core.py $$pkg .bare/bin/python || exit 1; \
+		rm -rf .bare; \
+	done
 
 # Rebuild one package's changelog from the commits that touched it.
 changelog:

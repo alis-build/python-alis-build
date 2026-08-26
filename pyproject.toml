@@ -22,7 +22,7 @@ alis-build-iam = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "alis-build-alog",
+    "alis-build-alog[grpc]",
     "alis-build-iam[authn,authz,grpc]",
     "git-cliff>=2.13",
     "mypy>=2.3.1",
@@ -65,5 +65,8 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
-addopts = "-q"
+# importlib mode gives each test module a name derived from its full path, so
+# two packages may both have a tests/test_asgi.py. The default mode derives the
+# name from the basename alone and refuses the second one it finds.
+addopts = "-q --import-mode=importlib"
 asyncio_mode = "auto"

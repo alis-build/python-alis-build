@@ -18,6 +18,15 @@ name = "alis-build-alog"
 version = "0.1.0"
 source = { editable = "packages/alog" }
 
+[package.optional-dependencies]
+grpc = [
+    { name = "grpcio" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "grpcio", marker = "extra == 'grpc'", specifier = ">=1.60" }]
+provides-extras = ["grpc"]
+
 [[package]]
 name = "alis-build-iam"
 version = "0.1.0"
@@ -866,7 +875,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
-    { name = "alis-build-alog" },
+    { name = "alis-build-alog", extra = ["grpc"] },
     { name = "alis-build-iam", extra = ["authn", "authz", "grpc"] },
     { name = "git-cliff" },
     { name = "mypy" },
@@ -882,7 +891,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "alis-build-alog", editable = "packages/alog" },
+    { name = "alis-build-alog", extras = ["grpc"], editable = "packages/alog" },
     { name = "alis-build-iam", extras = ["authn", "authz", "grpc"], editable = "packages/iam" },
     { name = "git-cliff", specifier = ">=2.13" },
     { name = "mypy", specifier = ">=2.3.1" },

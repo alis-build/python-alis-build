@@ -34,16 +34,20 @@ jobs:
   # ModuleNotFoundError from somewhere inside the package.
   bare-core:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [alog, iam]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v10.0.1
-      - run: uv build --package alis-build-iam --out-dir dist
+      - run: uv build --package alis-build-${{ matrix.package }} --out-dir dist
       - run: python -m venv .bare
       - run: .bare/bin/pip install --quiet dist/*.whl
-      - run: python scripts/check_bare_core.py .bare/bin/python
+      - run: python scripts/check_bare_core.py ${{ matrix.package }} .bare/bin/python
 
   # Guards the "installable with plain pip" requirement: build the wheels, then
   # install and import them in a stock venv with uv nowhere in the picture.
