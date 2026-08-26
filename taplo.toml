@@ -1,0 +1,15 @@
+# Taplo formatter config — https://taplo.tamasfe.dev/configuration/file.html
+# Used by Even Better TOML in the editor and by `taplo fmt` in CI/scripts.
+
+[formatting]
+# Match [tool.ruff] line-length in pyproject.toml.
+column_width = 100
+# 4 spaces, not taplo's 2-space default: matches PEP 621 / uv / hatch docs
+# and avoids reformatting every pyproject.toml in the repo.
+indent_string = "    "
+align_comments = false
+trailing_newline = true
+
+[[rule]]
+include = ["**/*.toml"]
+exclude = ["**/.venv/**", "**/dist/**"]

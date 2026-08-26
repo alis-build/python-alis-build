@@ -1,0 +1,17 @@
+{
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  // The uv workspace venv. Without this the editor resolves imports against a
+  // system interpreter and alis.build.* comes up missing.
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+}

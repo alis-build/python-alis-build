@@ -1,0 +1,53 @@
+# Workspace root. Not itself published — it only ties the packages/* members
+# together for local dev and pins the shared toolchain.
+[project]
+name = "python-alis-build"
+version = "0.0.0"
+description = "Monorepo of Alis Build packages for Python"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4",
+    "pytest-cov>=7.1",
+    "ruff>=0.16.4",
+    "taplo>=0.9.3",
+]
+
+# ---------------------------------------------------------------------------
+# Shared tool config — applies to every package in the workspace.
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["packages/*/src", "packages/*/tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# Namespace packages have no __init__.py, so mypy needs to be told.
+namespace_packages = true
+explicit_package_bases = true
+# Each package adds its src/ dir here, colon-separated: "packages/<name>/src".
+mypy_path = ""
+
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = "-q"
+asyncio_mode = "auto"

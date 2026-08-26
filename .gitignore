@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# Build output. Anchored to the repo root on purpose: an unanchored `build/`
+# would also match packages/*/src/alis/build/, silently emptying every wheel.
+/build/
+/dist/
+/packages/*/build/
+/packages/*/dist/
+
+.venv/
+venv/
+
+# Tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+*.swp

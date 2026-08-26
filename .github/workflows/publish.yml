@@ -1,0 +1,38 @@
+name: publish
+
+# Tag one package to release it: <package-dir>-v<version>, e.g. iam-v0.1.0
+on:
+  push:
+    tags: ["*-v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC). No API token is stored.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Resolve package and verify the tag matches its version
+        id: package
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          name="${tag%-v*}"
+          version="${tag##*-v}"
+          dir="packages/${name}"
+          test -f "${dir}/pyproject.toml" || { echo "no such package: ${dir}"; exit 1; }
+          declared=$(grep -m1 '^version = ' "${dir}/pyproject.toml" | cut -d'"' -f2)
+          if [ "${declared}" != "${version}" ]; then
+            echo "tag ${tag} does not match ${dir} version ${declared}"; exit 1
+          fi
+          echo "dir=${dir}" >> "$GITHUB_OUTPUT"
+
+      - run: uv build --package "$(grep -m1 '^name = ' ${{ steps.package.outputs.dir }}/pyproject.toml | cut -d'"' -f2)" --out-dir dist
+
+      - name: Verify the wheel installs with plain pip
+        run: python scripts/check_pip_install.py
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
