@@ -1,0 +1,13 @@
+# Actions pinned to a major tag still go stale: a major that bundles an
+# end-of-life Node runtime keeps working, but every job logs a deprecation
+# warning until someone notices. Dependabot opens the bump instead.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: chore
+    labels:
+      - dependencies
