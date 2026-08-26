@@ -8,8 +8,9 @@ license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [
     { name = "Alis Build", email = "admin@alis.build" },
-    { name = "Alis Build", email = "admin@alis.build" },
-    { name = "Alis Build", email = "admin@alis.build" },
+    { name = "Newton Nthiga", email = "newton@alisx.com" },
+    { name = "Daniel van Niekerk", email = "daniel.van.niekerk@alisx.com" },
+    { name = "Jan Krynauw", email = "jan@alisx.com" },
 ]
 keywords = ["alis", "iam", "auth", "authn", "authz", "grpc"]
 classifiers = [
@@ -23,6 +24,9 @@ classifiers = [
 # The identity model and wire format are dependency-free. Everything that
 # needs a third-party library lives behind an extra.
 dependencies = []
+
+[project.optional-dependencies]
+grpc = ["grpcio>=1.60"]
 
 [project.urls]
 Homepage = "https://alisx.com/build"

@@ -16,7 +16,12 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-authors = [{{ name = "Alis Build", email = "hello@alis.build" }}]
+authors = [
+    {{ name = "Alis Build", email = "admin@alis.build" }},
+    {{ name = "Daniel van Niekerk", email = "daniel.van.niekerk@alisx.com" }},
+    {{ name = "Newton Nthiga", email = "newton@alisx.com" }},
+    {{ name = "Jan Krynauw", email = "jan@alisx.com" }},
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
