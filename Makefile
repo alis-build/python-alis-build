@@ -49,7 +49,7 @@ changelog:
 	@test -n "$(PKG)" || (echo "usage: make changelog PKG=<package>" && exit 1)
 	uv run git-cliff --config cliff.toml \
 		--include-path "packages/$(PKG)/**" \
-		--tag-pattern "$(PKG)-v[0-9].*" \
+		--tag-pattern "$(PKG)/v[0-9].*" \
 		--output packages/$(PKG)/CHANGELOG.md
 
 new:

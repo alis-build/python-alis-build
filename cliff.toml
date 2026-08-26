@@ -25,10 +25,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n
 body = """
 {% if version %}\
     {% if previous.version %}\
-        ## [{{ version | trim_start_matches(pat="iam-v") }}](\
+        ## [{{ version | split(pat="/v") | last }}](\
 $REPO/compare/{{ previous.version }}...{{ version }}) ({{ timestamp | date(format="%Y-%m-%d") }})
     {% else %}\
-        ## {{ version | trim_start_matches(pat="iam-v") }} ({{ timestamp | date(format="%Y-%m-%d") }})
+        ## {{ version | split(pat="/v") | last }} ({{ timestamp | date(format="%Y-%m-%d") }})
     {% endif %}\
 {% else %}\
     ## Unreleased
@@ -52,7 +52,7 @@ protect_breaking_commits = true
 filter_commits = true
 topo_order = false
 sort_commits = "oldest"
-tag_pattern = ".*-v[0-9]+.*"
+tag_pattern = ".*/v[0-9]+.*"
 
 commit_parsers = [
     { message = "^feat", group = "Features" },

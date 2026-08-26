@@ -1,9 +1,9 @@
 name: publish
 
-# Tag one package to release it: <package-dir>-v<version>, e.g. iam-v0.1.0
+# Tag one package to release it: <package-dir>/v<version>, e.g. iam/v0.1.0
 on:
   push:
-    tags: ["*-v*"]
+    tags: ["*/v*"]
 
 jobs:
   # Rebuilds the package's changelog from the commits the tag covers and pushes
@@ -25,15 +25,20 @@ jobs:
 
       - name: Rebuild the changelog
         run: |
-          package="${GITHUB_REF_NAME%-v*}"
+          package="${GITHUB_REF_NAME%/v*}"
+          # --tag names the release explicitly. Without it the tag is only
+          # recognised when it happens to sit on a commit that touched the
+          # package, so a docs commit landing last would silently produce an
+          # "Unreleased" heading instead of the version.
           uv run --with git-cliff git-cliff --config cliff.toml \
             --include-path "packages/${package}/**" \
-            --tag-pattern "${package}-v[0-9].*" \
+            --tag-pattern "${package}/v[0-9].*" \
+            --tag "${GITHUB_REF_NAME}" \
             --output "packages/${package}/CHANGELOG.md"
 
       - name: Commit it if it changed
         run: |
-          package="${GITHUB_REF_NAME%-v*}"
+          package="${GITHUB_REF_NAME%/v*}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet -- "packages/${package}/CHANGELOG.md"; then
@@ -58,8 +63,8 @@ jobs:
         id: package
         run: |
           tag="${GITHUB_REF_NAME}"
-          name="${tag%-v*}"
-          version="${tag##*-v}"
+          name="${tag%/v*}"
+          version="${tag##*/v}"
           dir="packages/${name}"
           test -f "${dir}/pyproject.toml" || { echo "no such package: ${dir}"; exit 1; }
           declared=$(grep -m1 '^version = ' "${dir}/pyproject.toml" | cut -d'"' -f2)

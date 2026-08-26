@@ -63,11 +63,11 @@ problems go through [SECURITY.md](SECURITY.md) rather than a public issue.
 
 Each package versions independently. Bump `version` in the package's
 `pyproject.toml` and its `__version__`, then push a tag shaped
-`<package-dir>-v<version>`:
+`<package-dir>/v<version>`:
 
 ```bash
-git tag iam-v0.1.0
-git push origin iam-v0.1.0
+git tag iam/v0.1.0
+git push origin iam/v0.1.0
 ```
 
 The `publish` workflow rebuilds that package's changelog, then builds and

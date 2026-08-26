@@ -136,8 +136,8 @@ Each package versions independently.
 3. Tag and push:
 
    ```shell
-   git tag iam-v0.2.0
-   git push origin iam-v0.2.0
+   git tag iam/v0.2.0
+   git push origin iam/v0.2.0
    ```
 
 The workflow rebuilds the changelog, then builds and uploads that one package to
