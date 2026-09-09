@@ -1,0 +1,12 @@
+Task: store-tests (13/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_store.py — 13 tests over TestRoundTrip,
+TestUpdateTime, TestIsolation, TestConcurrency.
+
+Red verified: ImportError on OperationNotFoundError and
+alis.build.lro.testing.InMemoryStore.
+
+Three cases guard against an in-memory store that quietly differs from a real
+one: timezone-aware update_time (naive timestamps break against a Spanner
+TIMESTAMP), no aliasing in either direction, and ten concurrent writers leaving
+a consistent row.
