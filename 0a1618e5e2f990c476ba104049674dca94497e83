@@ -1,0 +1,7 @@
+Task wire-format-impl (6/17), track iamscoped_20260909.
+
+Suite green at 429 passed, mypy strict clean, ruff clean.
+
+Cross-language check: ran go test in alis-exchange/go-alis-build iam/v3 to dump
+json.Marshal output for four Identity fixtures and diffed against dumps().
+All four match byte for byte, so the format contract holds.
