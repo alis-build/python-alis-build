@@ -22,3 +22,19 @@ Design notes:
 - Logging goes through the stdlib 'alis.build.lro' logger. Go's lro imports
   go.alis.build/alog; product principle 4 forbids depending on a sibling package,
   and a service that installs alis-build-alog still gets structured output.
+
+--- Phase checkpoint: P4 Client and resume ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 749 passed
+(119 in packages/lro).
+
+Manual verification proposed and confirmed by the user:
+1. Full lifecycle with no cloud: create, save dataclass state, local resume,
+   handler increments and completes -> done True,
+   state {"owner":"users/123","polls":1}
+2. A raising handler leaves the operation done with 'ValueError: upstream said
+   no' rather than taking the process down as Go would
+3. local=False raises 'no task queue is configured', naming a fix that exists
+   today rather than an undeclared extra
+
+User response: approved, checkpoint and continue.
