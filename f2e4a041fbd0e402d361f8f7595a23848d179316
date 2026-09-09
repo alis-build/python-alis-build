@@ -1,0 +1,19 @@
+Task: scaffold-package (3/30, track lrocore_20260909)
+
+Scaffolded packages/lro via 'make new NAME=lro' and registered it across the
+workspace.
+
+Created:
+- packages/lro/pyproject.toml — alis-build-lro, core deps googleapis-common-protos
+  + protobuf, grpc extra
+- packages/lro/src/alis/build/lro/__init__.py, py.typed
+- packages/lro/README.md, LICENSE
+- packages/lro/tests/test_lro.py
+
+Modified:
+- pyproject.toml — [tool.uv.sources], dev group, mypy_path
+- README.md — package table row
+
+Why: the core dependency is the one decision here that breaks a repo-wide
+principle (product.md principle 1), so it was recorded in tech-stack.md before
+this commit rather than after.
