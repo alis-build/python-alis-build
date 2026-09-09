@@ -1,0 +1,17 @@
+Task: config-impl (6/30, track lrocore_20260909)
+
+Created:
+- _errors.py — LroError, ConfigError, MissingDependencyError (also an ImportError)
+- _config.py — Config, resolve_cloud_tasks_location, config_from_env
+
+Modified:
+- __init__.py — curated exports
+
+Green: 32 passed, ruff clean, mypy strict clean over 79 files.
+
+Ported verbatim from tasks.go: the 23 supported Cloud Tasks locations and the
+single africa-south1 -> europe-west1 fallback.
+
+Note: a Config.replace() helper was written and then removed before commit — no
+test drove it, and the TDD iron law in workflow.md forbids production code ahead
+of a failing test. P5 adds it with the prefix-override test that needs it.
