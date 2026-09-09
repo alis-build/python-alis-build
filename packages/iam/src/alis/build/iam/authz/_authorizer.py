@@ -130,6 +130,9 @@ class Authorizer:
     def has_role(self, roles: Iterable[str], /, *policies: Policy | None) -> bool:
         """Reports whether the caller holds any of these roles.
 
+        A restricted identity passes neither the privilege bypass nor an open
+        role: it holds only the roles it explicitly carries.
+
         Args:
             roles: Roles to check. Holding **any** of them is enough, and an
                 empty collection is always a refusal.
@@ -144,7 +147,9 @@ class Authorizer:
 
         requested = tuple(roles)
         for role in requested:
-            if self._registry.is_open(role):
+            # An open role grants to everyone, which is exactly the reach a
+            # scoped credential must not have.
+            if not self._identity.restricted and self._registry.is_open(role):
                 return True
         if not requested:
             return False
