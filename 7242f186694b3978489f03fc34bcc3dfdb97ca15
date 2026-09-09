@@ -1,0 +1,19 @@
+Task: ship-gates (14/16, track lrocloud_20260909)
+
+Modified:
+- scripts/check_bare_core.py — EXTRAS now covers grpc, spanner and tasks
+- packages/lro/README.md — ruff reformatted a comment in a python block
+- conductor tech-stack.md — the two new extras added to the table
+
+All gates green:
+- make check       845 passed; ruff, taplo, mypy strict clean
+- make check-bare  3 packages, 'bare core ok' each; all three lro extras name
+                   themselves and their install command
+- make check-pip   all three wheels install and import under plain pip
+
+Coverage for packages/lro: 95% (812 statements, 41 missed), above the >80% the
+workflow requires.
+
+Worth knowing: ruff formats Python code blocks inside Markdown here, so README
+examples are format-checked like source. That is how a stray alignment space in
+the Backends example turned up in make check.
