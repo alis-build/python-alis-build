@@ -1,0 +1,17 @@
+Task: infra-readme (13/16, track lrocloud_20260909)
+
+Modified packages/lro/README.md — install matrix now lists all four extras, plus
+new Backends and Infrastructure contract sections.
+
+Ported from docs.go: the table-name formula with a worked example, the
+five-column schema, the 90-day TTL on UpdateTime, the {neuron}-operations queue,
+the infra/modules/alis.lro.v2 layout, and the ALIS_* to Config mapping.
+
+Two things stated that docs.go leaves implicit:
+- the TTL is what clears finished operations, which is why a handler failure
+  marks the operation failed rather than letting it expire silently
+- Cloud Tasks is not available in every Cloud Run region, so a neuron in
+  africa-south1 queues in europe-west1 while its host stays where it is deployed
+
+The Terraform was restructured with a locals block so every line fits the 80-100
+column range the product guidelines set; it is otherwise the same resource.
