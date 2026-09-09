@@ -1,0 +1,24 @@
+Task: resume-impl (18/30, track lrocore_20260909)
+
+Modified:
+- _client.py — is_local, schedule_local, resume_now, _fail_unless_already_done,
+  close() now cancels pending timers
+- _operation.py — resume_via_tasks, _Resumer protocol, optional client on the
+  constructor
+
+Green: 119 in packages/lro, 749 across the workspace, ruff clean, mypy strict
+clean over 91 files.
+
+Design notes:
+- Operation depends on a narrow _Resumer protocol (handler_for, is_local,
+  schedule_local) rather than on Client, so the two modules do not import each
+  other and the async client can satisfy the same shape.
+- The path is validated before anything is scheduled. A task pointing at an
+  unregistered path would be dispatched, fail, and retry until the queue gave up.
+- Local timers are bounded by TASK_DEADLINE so a handler cannot be given more
+  time locally than Cloud Tasks would allow in production, are daemon threads so
+  they cannot hold up interpreter exit, and are held in a set so close() can
+  cancel them and the GC cannot collect a pending resume.
+- Logging goes through the stdlib 'alis.build.lro' logger. Go's lro imports
+  go.alis.build/alog; product principle 4 forbids depending on a sibling package,
+  and a service that installs alis-build-alog still gets structured output.
