@@ -14,6 +14,8 @@ from ._client import Client, ResumeHandler
 from ._config import Config, config_from_env, resolve_cloud_tasks_location
 from ._errors import (
     ConfigError,
+    HandlerError,
+    HandlerNotFoundError,
     LroError,
     MissingDependencyError,
     OperationNameError,
@@ -32,6 +34,8 @@ __all__ = [
     "Client",
     "Config",
     "ConfigError",
+    "HandlerError",
+    "HandlerNotFoundError",
     "LroError",
     "MissingDependencyError",
     "Operation",

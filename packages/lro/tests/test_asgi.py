@@ -14,16 +14,16 @@ import pytest
 from google.protobuf.struct_pb2 import Struct
 
 from alis.build.lro import Client, Operation
-from alis.build.lro.asgi import ResumeMiddleware
+from alis.build.lro.asgi import Message, ResumeMiddleware, Scope, Send
 
 
 class Capture:
     """Records what an ASGI app was asked to send."""
 
     def __init__(self) -> None:
-        self.messages: list[dict[str, Any]] = []
+        self.messages: list[Message] = []
 
-    async def __call__(self, message: dict[str, Any]) -> None:
+    async def __call__(self, message: Message) -> None:
         self.messages.append(message)
 
     @property
@@ -42,11 +42,11 @@ class Capture:
         )
 
 
-async def _receive() -> dict[str, Any]:
+async def _receive() -> Message:
     return {"type": "http.request", "body": b"", "more_body": False}
 
 
-def scope(path: str, *, method: str = "PUT", query: str = "", kind: str = "http") -> dict[str, Any]:
+def scope(path: str, *, method: str = "PUT", query: str = "", kind: str = "http") -> Scope:
     return {
         "type": kind,
         "method": method,
@@ -63,7 +63,7 @@ class Inner:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+    async def __call__(self, scope: Scope, receive: Any, send: Send) -> None:
         self.calls.append(scope["path"])
         await send({"type": "http.response.start", "status": 418, "headers": []})
         await send({"type": "http.response.body", "body": b"inner"})

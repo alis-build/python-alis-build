@@ -9,6 +9,8 @@ from __future__ import annotations
 
 __all__ = [
     "ConfigError",
+    "HandlerError",
+    "HandlerNotFoundError",
     "LroError",
     "MissingDependencyError",
     "OperationNameError",
@@ -43,3 +45,11 @@ class StateCodecError(LroError):
 
 class OperationNotFoundError(LroError):
     """No operation with that name is stored."""
+
+
+class HandlerNotFoundError(LroError):
+    """No resumable handler is registered for that callback path."""
+
+
+class HandlerError(LroError):
+    """A resumable handler raised. Its operation has been marked failed."""

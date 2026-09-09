@@ -6,12 +6,13 @@ import logging
 import os
 import threading
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 
 from google.longrunning import operations_pb2
 from google.protobuf.message import Message
 
 from ._config import Config, config_from_env
-from ._errors import LroError
+from ._errors import HandlerError, HandlerNotFoundError, LroError
 from ._names import validate_operation_name
 from ._operation import Operation, OperationRecord
 from ._store import TASK_DEADLINE, OperationStore
@@ -73,6 +74,15 @@ class Client:
         """The configuration this client was built with."""
         return self._config
 
+    def set_callback_prefix(self, prefix: str) -> None:
+        """Moves where resumable callbacks are served.
+
+        The client builds callback URLs from this and the ASGI middleware
+        matches incoming paths against it, so it lives in one place rather than
+        being passed to each of them separately.
+        """
+        self._config = replace(self._config, callback_prefix=prefix)
+
     @property
     def resumable_paths(self) -> frozenset[str]:
         """The callback paths that currently have a handler."""
@@ -120,12 +130,12 @@ class Client:
         """Returns the handler registered for a path.
 
         Raises:
-            LroError: No handler is registered for that path.
+            HandlerNotFoundError: No handler is registered for that path.
         """
         with self._lock:
             handler = self._handlers.get(path)
         if handler is None:
-            raise LroError(f"no resumable handler registered for path {path!r}")
+            raise HandlerNotFoundError(f"no resumable handler registered for path {path!r}")
         return handler
 
     def new_operation(self, name: str, metadata: Message) -> Operation:
@@ -213,8 +223,9 @@ class Client:
             name: The operation to resume.
 
         Raises:
-            LroError: No handler is registered for that path, or the handler
-                raised. A handler that raises leaves its operation failed.
+            HandlerNotFoundError: No handler is registered for that path.
+            HandlerError: The handler raised. Its operation has been marked
+                failed before this propagates.
             OperationNotFoundError: No operation with that name.
         """
         handler = self.handler_for(path)
@@ -224,7 +235,7 @@ class Client:
         except Exception as exc:
             _log.exception("resumable handler %r failed for %s", path, name)
             self._fail_unless_already_done(name, exc)
-            raise LroError(f"resumable handler {path!r} failed for {name}") from exc
+            raise HandlerError(f"resumable handler {path!r} failed for {name}") from exc
 
     def _fail_unless_already_done(self, name: str, exc: BaseException) -> None:
         """Records the exception on the operation, unless it already finished.
