@@ -1,0 +1,5 @@
+Task identity-model-tests (2/17), track iamscoped_20260909.
+
+Four red tests: scoped claim defaults, restricted admin not privileged,
+restricted system not privileged, and every Identity field surviving
+promote_system. All fail on Identity having no authz_roles/restricted.
