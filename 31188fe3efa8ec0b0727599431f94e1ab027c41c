@@ -1,0 +1,24 @@
+Task: spanner-impl (4/16, track lrocloud_20260909)
+
+Created:
+- spanner/__init__.py — extra guard naming 'spanner'
+- spanner/_store.py — SpannerStore, operations_table
+
+Modified:
+- packages/lro/pyproject.toml — spanner extra
+- pyproject.toml — dev group, mypy untyped_calls_exclude
+- conductor tech-stack.md — records why that setting exists
+
+Green: 172 in packages/lro, ruff clean, mypy strict clean over 102 files.
+
+The table name is derived, never configured: f'{project}_{neuron}_Operations'
+with hyphens replaced, ported from db.go. Hyphens are not legal in a Spanner
+identifier.
+
+mypy note: google-cloud-spanner and google-api-core ship py.typed but leave
+public functions unannotated, so strict mode read normal calls as untyped ones.
+ignore_missing_imports cannot fix that — the modules are found, just
+under-typed — so untyped_calls_exclude names the two packages instead. That is
+narrower than relaxing disallow_untyped_calls for our own modules.
+
+The 'spanner-tests' note said 17 tests; there are 15.
