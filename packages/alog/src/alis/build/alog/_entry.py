@@ -129,7 +129,10 @@ def record_fields(record: logging.LogRecord, /) -> dict[str, Any]:
     }
 
 
-def build_entry(
+# One branch per optional entry key, each a single-line guard that either sets
+# the key or leaves it out. The score counts how many keys the format has, not
+# how hard the function is to follow; nothing here nests past two.
+def build_entry(  # noqa: C901, PLR0912
     record: logging.LogRecord,
     context: BoundContext,
     /,

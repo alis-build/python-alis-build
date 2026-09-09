@@ -101,7 +101,10 @@ def build_authorize_url(
     return f"{authorize_url}?{urlencode(sorted(params.items()))}"
 
 
-def build_token_request(
+# Keyword-only, all defaulted: the union of the fields the supported grant
+# types need. Which ones are set depends on the grant, so they cannot be split
+# without a request class per grant type.
+def build_token_request(  # noqa: PLR0913
     token_url: str,
     grant_type: GrantType,
     /,

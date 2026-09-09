@@ -44,10 +44,46 @@ target-version = "py311"
 src = ["packages/*/src", "packages/*/tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "SIM",
+    "RUF",
+    "C901", # cyclomatic complexity
+    "PLR1702", # nesting depth
+    "PLR0912", # branches
+    "PLR0913", # arguments
+    "PLR0915", # statements
+]
+# PLR1702 is preview-only in ruff 0.16, and it is the only readability signal
+# ruff has — there is no cognitive-complexity rule. explicit-preview-rules keeps
+# preview to the codes named above; without it, preview rules inside E/W/RUF
+# fire too, which is 69 further findings this repo has not opted into.
+preview = true
+explicit-preview-rules = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-nested-blocks = 4
+max-branches = 12
+max-args = 6
+max-statements = 50
+# Relaxed from ruff's 6. Guard clauses produce many early returns on purpose,
+# and that reads better than the nested alternative.
+max-returns = 8
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S101"]
+# Fixtures and parametrised tests legitimately run long and branch wide.
+"**/tests/**" = ["S101", "C901", "PLR0912", "PLR0913", "PLR0915"]
 
 [tool.mypy]
 python_version = "3.11"

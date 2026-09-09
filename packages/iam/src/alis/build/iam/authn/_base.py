@@ -96,7 +96,10 @@ class BaseAuthnClient:
         "_verify_signatures",
     )
 
-    def __init__(
+    # Keyword-only configuration, nine of twelve defaulted. Nothing is
+    # positional, so every call site names what it passes; the count measures
+    # how much an OIDC provider has to be told, not the width of the interface.
+    def __init__(  # noqa: PLR0913
         self,
         *,
         authorize_url: str,
