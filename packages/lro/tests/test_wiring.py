@@ -212,3 +212,18 @@ class TestAsyncWiring:
         client = AsyncClient(make_config(), store=store, queue=queue)
         await client.close()
         assert queue.closed
+
+
+class TestBackendDefaulting:
+    def test_a_queue_without_a_store_is_refused(self, make_config: Callable[..., Config]) -> None:
+        # Defaulting is all or nothing. Silently connecting to Spanner because
+        # only a queue was passed would need credentials a test does not have.
+        from alis.build.lro import ConfigError
+
+        with pytest.raises(ConfigError, match="all or nothing"):
+            Client(make_config(), queue=FakeQueue())
+
+    def test_a_store_alone_does_not_open_a_queue(
+        self, store: InMemoryStore, make_config: Callable[..., Config]
+    ) -> None:
+        assert Client(make_config(), store=store).queue is None
