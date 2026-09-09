@@ -25,7 +25,7 @@ alis-build-lro = { workspace = true }
 dev = [
     "alis-build-alog[grpc]",
     "alis-build-iam[authn,authz,grpc]",
-    "alis-build-lro[grpc]",
+    "alis-build-lro[grpc,spanner]",
     "git-cliff>=2.13",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
@@ -57,12 +57,24 @@ strict = true
 # Namespace packages have no __init__.py, so mypy needs to be told.
 namespace_packages = true
 explicit_package_bases = true
+# google-cloud-spanner and google-api-core ship py.typed but leave many public
+# functions unannotated, so strict mode reads a normal call as an untyped one.
+# ignore_missing_imports cannot help: the modules are found, just under-typed.
+untyped_calls_exclude = ["google.cloud", "google.api_core"]
 mypy_path = ["packages/alog/src", "packages/iam/src", "packages/lro/src"]
 
 # grpcio and the generated IAM protos ship no py.typed, so their symbols
 # arrive as Any. types-protobuf covers google.protobuf itself.
 [[tool.mypy.overrides]]
-module = ["grpc.*", "google.iam.*", "google.longrunning.*", "google.rpc.*", "google.type.*"]
+module = [
+    "grpc.*",
+    "google.api_core.*",
+    "google.cloud.*",
+    "google.iam.*",
+    "google.longrunning.*",
+    "google.rpc.*",
+    "google.type.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
