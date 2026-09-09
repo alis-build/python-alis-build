@@ -1,0 +1,4 @@
+Task refresh-validation-tests (11/17), track iamscoped_20260909.
+
+5 new tests, 4 red with DID NOT RAISE. authenticate returns refresh(tokens)
+straight to the caller in both clients, so the renewed token is never checked.
