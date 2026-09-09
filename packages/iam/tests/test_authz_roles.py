@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -172,3 +173,84 @@ async def test_concurrent_checks_do_not_bleed_into_each_other(registry: Registry
     assert all(held for held, _ in results)
     assert not any(others for _, others in results)
     assert authorizer.roles == frozenset()
+
+
+# -- restricted credentials ------------------------------------------------
+
+
+def test_restricted_identity_is_denied_an_open_role(registry: Registry) -> None:
+    registry.add_open_role_permissions("roles/open", ["/example.v1.Books/List"])
+    identity = Identity(type=IdentityType.USER, id="restricted-zero-role", restricted=True)
+
+    assert Authorizer(identity, registry=registry).has_role(["roles/open"]) is False
+
+    # The same identity without the claim still gets the open role.
+    unrestricted = replace(identity, restricted=False)
+    assert Authorizer(unrestricted, registry=registry).has_role(["roles/open"]) is True
+
+
+def test_restricted_identity_keeps_the_roles_it_carries(registry: Registry) -> None:
+    """Restriction removes the bypasses, not the roles the credential carries."""
+    carried = policy(binding("roles/viewer", "user:restricted-1234"))
+    identity = Identity(
+        type=IdentityType.USER,
+        id="restricted-1234",
+        policy=encode_policy(carried),
+        restricted=True,
+    )
+    authorizer = Authorizer(identity, registry=registry)
+
+    # From its own policy claim.
+    assert authorizer.has_role(["roles/viewer"]) is True
+    # From a policy supplied for this check only.
+    supplied = policy(binding("roles/editor", "user:restricted-1234"))
+    assert authorizer.has_role(["roles/editor"], supplied) is True
+    # From an explicit grant.
+    authorizer.add_roles("roles/owner")
+    assert authorizer.has_role(["roles/owner"]) is True
+
+    assert authorizer.has_role(["roles/admin"]) is False
+
+
+def test_restricted_admin_loses_the_bypass(registry: Registry, system_config: SystemConfig) -> None:
+    admin = Identity(
+        type=IdentityType.USER,
+        id="restricted-role-admin-id",
+        email="restricted-role-admin@example.com",
+        restricted=True,
+    )
+    system_config.add_admin_email(admin.email)
+    authorizer = Authorizer(admin, registry=registry)
+
+    assert authorizer.has_role(["roles/admin"]) is False
+    # The principal is unchanged; only the credential is scoped.
+    assert admin.type == IdentityType.USER
+
+
+def test_restricted_system_loses_the_bypass(registry: Registry) -> None:
+    system = Identity(type=IdentityType.SYSTEM, id="system", restricted=True)
+    authorizer = Authorizer(system, registry=registry)
+
+    assert authorizer.has_role(["roles/admin"]) is False
+
+    # A role it is actually given still counts.
+    authorizer.add_roles("roles/admin")
+    assert authorizer.has_role(["roles/admin"]) is True
+
+
+def test_authz_roles_are_carried_not_enforced(registry: Registry) -> None:
+    """Pins the non-goal: this package carries the allowlist, it never applies it.
+
+    Role ids are unnamespaced and registered per process, so an allowlist minted
+    by another service names a vocabulary this one never shared. Enforcing it
+    here would deny most of what it should allow and grant whatever collided.
+    Making this test fail has to be a deliberate decision.
+
+    Passes before the open-role change as well as after; it is a tripwire, not a
+    red-green cycle.
+    """
+    identity = Identity(type=IdentityType.USER, id="1934872948", authz_roles=[])
+    authorizer = Authorizer(identity, registry=registry)
+    authorizer.add_roles("roles/viewer")
+
+    assert authorizer.has_role(["roles/viewer"]) is True

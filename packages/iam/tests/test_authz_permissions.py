@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from alis.build.iam import Identity, IdentityType
+from alis.build.iam import Identity, IdentityType, SystemConfig
 from alis.build.iam.authz import (
     Authorizer,
     Registry,
@@ -142,3 +142,46 @@ def test_snapshot_is_independent(registry: Registry) -> None:
 
     assert saved.roles_for_permission(DELETE) == frozenset()
     assert registry.roles_for_permission(DELETE) == frozenset({"roles/admin"})
+
+
+# -- restricted credentials ------------------------------------------------
+
+
+CREATE = "/example.v1.Books/Create"
+
+
+def test_restricted_identity_loses_open_role_permissions(lenient_registry: Registry) -> None:
+    lenient_registry.add_open_role_permissions("roles/open", [CREATE])
+    lenient_registry.add_role_permissions("roles/viewer", [GET])
+    identity = Identity(type=IdentityType.USER, id="restricted-1234", restricted=True)
+    authorizer = Authorizer(identity, registry=lenient_registry)
+
+    # The open role no longer grants its permissions.
+    assert authorizer.has_permission(CREATE) is False
+
+    # Roles the credential explicitly carries still grant theirs.
+    authorizer.add_roles("roles/viewer")
+    assert authorizer.has_permission(GET) is True
+    assert authorizer.has_permission(CREATE) is False
+
+
+def test_restricted_admin_loses_permission_bypass(
+    lenient_registry: Registry, system_config: SystemConfig
+) -> None:
+    lenient_registry.add_role_permissions("roles/admin", [DELETE])
+    lenient_registry.add_open_role_permissions("roles/open", [CREATE])
+    admin = Identity(
+        type=IdentityType.USER,
+        id="restricted-permission-admin-id",
+        email="restricted-permission-admin@example.com",
+        restricted=True,
+    )
+    system_config.add_admin_email(admin.email)
+    authorizer = Authorizer(admin, registry=lenient_registry)
+
+    assert authorizer.has_permission(DELETE) is False
+    assert authorizer.has_permission(CREATE) is False
+
+    authorizer.add_roles("roles/admin")
+    assert authorizer.has_permission(DELETE) is True
+    assert admin.type == IdentityType.USER
