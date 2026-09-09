@@ -12,3 +12,9 @@ collapsed them would produce a write per field change.
 validate_operation_name is exported publicly rather than imported from _names:
 ruff resolves alis.build.lro as first-party but alis.build.lro._names as
 third-party, so a private-module import can never satisfy the import sorter.
+
+Correction: the ruff I001 reason recorded above is wrong. alis.build.lro._names
+sorted as third-party because the file did not exist on disk yet, not because it
+is private. Exporting validate_operation_name publicly is still the right call —
+a caller building operations/{uuid} names can use it — but that was not what the
+lint error was telling us.
