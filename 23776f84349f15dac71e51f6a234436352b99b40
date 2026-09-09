@@ -1,0 +1,12 @@
+Task: config-tests (5/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_config.py — 26 tests over three classes:
+TestRegionResolution, TestConfigValidation, TestFromEnv.
+
+Red verified: ImportError on Config, ConfigError, config_from_env,
+resolve_cloud_tasks_location — the expected missing-feature failure, not a typo.
+
+Why these cases: the africa-south1 fallback and the sorted supported-region
+listing are ported behaviour that would be easy to drop silently; the
+callback_prefix normalisation and the local tri-state default are this port's own
+decisions and needed pinning before implementation.
