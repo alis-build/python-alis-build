@@ -15,3 +15,16 @@ single africa-south1 -> europe-west1 fallback.
 Note: a Config.replace() helper was written and then removed before commit — no
 test drove it, and the TDD iron law in workflow.md forbids production code ahead
 of a failing test. P5 adds it with the prefix-override test that needs it.
+
+--- Phase checkpoint: P2 Configuration ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 663 passed
+(32 in packages/lro).
+
+Manual verification proposed and confirmed by the user:
+1. resolve_cloud_tasks_location('africa-south1') -> 'europe-west1'
+2. Unsupported region error names the region and lists all 23 supported ones sorted
+3. config_from_env derives queue, service account, resolved location and host;
+   queue moves to europe-west1 while the host keeps africa-south1
+
+User response: approved, checkpoint and continue.
