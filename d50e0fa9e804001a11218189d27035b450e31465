@@ -1,0 +1,14 @@
+Task: operation-tests (8/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_operation.py — 27 tests over five classes:
+TestOperationName, TestMetadata, TestFinishing, TestResumePoint, TestAccessors.
+
+Red verified: ImportError on Operation, OperationRecord, OperationNameError.
+
+The set/save split is asserted on every mutator (metadata, resume point) because
+it is the whole point of the pair: set_* stages, save_* writes. A reader who
+collapsed them would produce a write per field change.
+
+validate_operation_name is exported publicly rather than imported from _names:
+ruff resolves alis.build.lro as first-party but alis.build.lro._names as
+third-party, so a private-module import can never satisfy the import sorter.
