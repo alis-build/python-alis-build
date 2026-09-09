@@ -12,6 +12,7 @@ __all__ = [
     "LroError",
     "MissingDependencyError",
     "OperationNameError",
+    "OperationNotFoundError",
     "StateCodecError",
 ]
 
@@ -38,3 +39,7 @@ class OperationNameError(LroError):
 
 class StateCodecError(LroError):
     """Private state could not be encoded, or no longer fits the type given."""
+
+
+class OperationNotFoundError(LroError):
+    """No operation with that name is stored."""

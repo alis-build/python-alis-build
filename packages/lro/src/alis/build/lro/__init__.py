@@ -16,22 +16,27 @@ from ._errors import (
     LroError,
     MissingDependencyError,
     OperationNameError,
+    OperationNotFoundError,
     StateCodecError,
 )
 from ._names import validate_operation_name
 from ._operation import Operation, OperationRecord
 from ._state import decode_state, encode_state
+from ._store import TASK_DEADLINE, OperationStore
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "TASK_DEADLINE",
     "Config",
     "ConfigError",
     "LroError",
     "MissingDependencyError",
     "Operation",
     "OperationNameError",
+    "OperationNotFoundError",
     "OperationRecord",
+    "OperationStore",
     "StateCodecError",
     "__version__",
     "config_from_env",
