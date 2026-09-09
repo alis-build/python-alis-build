@@ -1,0 +1,5 @@
+Task authz-tests (8/17), track iamscoped_20260909.
+
+7 new tests. Red: open role denied to restricted caller (roles + permissions),
+restricted admin denied an open permission. Green already: restricted admin and
+system lose the privilege bypass, carried roles still count, authz_roles ignored.
