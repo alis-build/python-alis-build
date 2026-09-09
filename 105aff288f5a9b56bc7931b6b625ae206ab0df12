@@ -1,0 +1,13 @@
+Task: asgi-tests (20/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_asgi.py — 14 tests over TestRouting,
+TestPassThrough, TestPrefix, TestHandlerFailure.
+
+Red verified: ModuleNotFoundError on alis.build.lro.asgi.
+
+The wrapped app answers 418 so a pass-through can never be confused with the
+middleware's own response.
+
+Pass-through is asserted three ways because each is a different bug: a
+non-matching path, a non-PUT method under the prefix (a GET there belongs to the
+service), and a non-http scope (a websocket must not be swallowed).
