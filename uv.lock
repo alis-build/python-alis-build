@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "alis-build-alog",
     "alis-build-iam",
+    "alis-build-lro",
     "python-alis-build",
 ]
 
@@ -54,6 +55,28 @@ requires-dist = [
     { name = "protobuf", marker = "extra == 'authz'", specifier = ">=4.25" },
 ]
 provides-extras = ["grpc", "authz", "authn"]
+
+[[package]]
+name = "alis-build-lro"
+version = "0.1.0"
+source = { editable = "packages/lro" }
+dependencies = [
+    { name = "googleapis-common-protos" },
+    { name = "protobuf" },
+]
+
+[package.optional-dependencies]
+grpc = [
+    { name = "grpcio" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "googleapis-common-protos", specifier = ">=1.60" },
+    { name = "grpcio", marker = "extra == 'grpc'", specifier = ">=1.60" },
+    { name = "protobuf", specifier = ">=4.25" },
+]
+provides-extras = ["grpc"]
 
 [[package]]
 name = "anyio"
@@ -877,6 +900,7 @@ source = { virtual = "." }
 dev = [
     { name = "alis-build-alog", extra = ["grpc"] },
     { name = "alis-build-iam", extra = ["authn", "authz", "grpc"] },
+    { name = "alis-build-lro", extra = ["grpc"] },
     { name = "git-cliff" },
     { name = "mypy" },
     { name = "pytest" },
@@ -893,6 +917,7 @@ dev = [
 dev = [
     { name = "alis-build-alog", extras = ["grpc"], editable = "packages/alog" },
     { name = "alis-build-iam", extras = ["authn", "authz", "grpc"], editable = "packages/iam" },
+    { name = "alis-build-lro", extras = ["grpc"], editable = "packages/lro" },
     { name = "git-cliff", specifier = ">=2.13" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pytest", specifier = ">=9.1.1" },

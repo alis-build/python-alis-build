@@ -107,6 +107,10 @@ def main(name: str) -> int:
     print(f"created packages/{name}")
     print("next: add it to the root pyproject.toml [tool.uv.sources] + dev group,")
     print("      extend [tool.mypy] mypy_path, and list it in README.md")
+    # Easy to miss, and nothing fails locally when it is: the bare-core job
+    # enumerates packages by hand, so an unlisted package is simply never checked.
+    print(f"      add {name!r} to scripts/check_bare_core.py CHECKS and to the")
+    print("      bare-core matrix in .github/workflows/ci.yml")
     return 0
 
 

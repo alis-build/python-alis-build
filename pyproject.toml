@@ -19,11 +19,13 @@ members = ["packages/*"]
 [tool.uv.sources]
 alis-build-alog = { workspace = true }
 alis-build-iam = { workspace = true }
+alis-build-lro = { workspace = true }
 
 [dependency-groups]
 dev = [
     "alis-build-alog[grpc]",
     "alis-build-iam[authn,authz,grpc]",
+    "alis-build-lro[grpc]",
     "git-cliff>=2.13",
     "mypy>=2.3.1",
     "pytest>=9.1.1",
@@ -91,12 +93,12 @@ strict = true
 # Namespace packages have no __init__.py, so mypy needs to be told.
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = ["packages/alog/src", "packages/iam/src"]
+mypy_path = ["packages/alog/src", "packages/iam/src", "packages/lro/src"]
 
 # grpcio and the generated IAM protos ship no py.typed, so their symbols
 # arrive as Any. types-protobuf covers google.protobuf itself.
 [[tool.mypy.overrides]]
-module = ["grpc.*", "google.iam.*", "google.type.*"]
+module = ["grpc.*", "google.iam.*", "google.longrunning.*", "google.rpc.*", "google.type.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
