@@ -22,3 +22,17 @@ callback is already scheduled.
 
 A dead 'type: ignore[override]' was removed from a test fake before commit;
 mypy strict flags unused ignores.
+
+--- Phase checkpoint: Q2 Cloud Tasks ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 829 passed
+(199 in packages/lro). Nothing in the suite sleeps.
+
+Manual verification proposed and confirmed by the user:
+1. Idempotency tests pass: one task name per logical call, retried under that
+   same name; a fresh name per new call
+2. Request shape matches tasks.go: queue path, HttpMethod.PUT, alis-build@
+   service account, 0:30:00 dispatch deadline
+3. make check-bare still 3/3
+
+User response: approved, checkpoint and continue.
