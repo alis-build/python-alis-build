@@ -1,0 +1,18 @@
+Task: packaging-gates (28/30, track lrocore_20260909)
+
+Modified:
+- scripts/check_bare_core.py — LRO block plus the lro entry in CHECKS
+
+All three gates green:
+- make check       787 passed; ruff, taplo, mypy strict clean
+- make check-bare  3 packages, 'bare core ok' each; alis.build.lro.grpc names
+                   the grpc extra when grpcio is absent
+- make check-pip   all three wheels install and import under plain pip
+
+Coverage for packages/lro: 96% (625 statements, 28 missed), against the >80%
+the workflow requires. The gaps are async accessor passthroughs and error
+branches that need a store failing mid-recovery.
+
+The LRO check exercises a full lifecycle rather than a version assertion,
+because 'the core works with no extras' is a claim about behaviour, not about
+whether an import statement succeeds.
