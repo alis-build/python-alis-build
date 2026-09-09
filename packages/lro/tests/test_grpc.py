@@ -32,13 +32,13 @@ class FakeContext:
     def abort(self, code: grpc.StatusCode, details: str) -> Any:
         self.code = code
         self.details = details
-        raise _Aborted(code, details)
+        raise _AbortedError(code, details)
 
     def time_remaining(self) -> float | None:
         return self._timeout
 
 
-class _Aborted(Exception):
+class _AbortedError(Exception):
     def __init__(self, code: grpc.StatusCode, details: str) -> None:
         super().__init__(details)
         self.code = code
@@ -64,7 +64,7 @@ class TestGetOperation:
 
     def test_missing_operation_aborts_not_found(self, servicer: OperationsServicer) -> None:
         context = FakeContext()
-        with pytest.raises(_Aborted):
+        with pytest.raises(_AbortedError):
             servicer.GetOperation(
                 operations_pb2.GetOperationRequest(name="operations/nope"), context
             )
@@ -72,7 +72,7 @@ class TestGetOperation:
 
     def test_malformed_name_aborts_invalid_argument(self, servicer: OperationsServicer) -> None:
         context = FakeContext()
-        with pytest.raises(_Aborted):
+        with pytest.raises(_AbortedError):
             servicer.GetOperation(operations_pb2.GetOperationRequest(name="agents/1"), context)
         assert context.code == grpc.StatusCode.INVALID_ARGUMENT
 
@@ -142,7 +142,7 @@ class TestWaitOperation:
 
     def test_missing_operation_aborts_not_found(self, servicer: OperationsServicer) -> None:
         context = FakeContext()
-        with pytest.raises(_Aborted):
+        with pytest.raises(_AbortedError):
             servicer.WaitOperation(
                 operations_pb2.WaitOperationRequest(name="operations/nope"), context
             )
