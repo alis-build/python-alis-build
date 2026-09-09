@@ -9,6 +9,7 @@ Monorepo of Python packages for builders on the
 | --- | --- | --- | --- |
 | `packages/alog` | [`alis-build-alog`](https://pypi.org/project/alis-build-alog/) | `alis.build.alog` | Structured logging for Cloud Logging. Dependency-free core; gRPC trace correlation behind an extra. |
 | `packages/iam` | [`alis-build-iam`](https://pypi.org/project/alis-build-iam/) | `alis.build.iam` | Authentication and authorization. Dependency-free core; gRPC, authz and authn behind extras. |
+| `packages/lro` | [`alis-build-lro`](https://pypi.org/project/alis-build-lro/) | `alis.build.lro` | Long-running operations: create, persist, resume and serve them. Storage is a seam; the Operations gRPC servicer sits behind an extra. |
 
 Every package publishes independently to PyPI and installs with plain `pip`.
 The shared `alis.build.*` import prefix is a [PEP 420][pep420] implicit
