@@ -18,6 +18,7 @@ import base64
 import binascii
 import json
 import math
+from dataclasses import replace
 from decimal import Decimal
 from typing import Any, Final
 
@@ -355,19 +356,10 @@ def promote_system(identity: Identity, config: SystemConfig | None = None) -> Id
     if identity.type == IdentityType.SYSTEM:
         return identity
     if (config or system_config()).is_system_email(identity.email):
-        return Identity(
-            type=IdentityType.SYSTEM,
-            id=identity.id,
-            email=identity.email,
-            accounts=identity.accounts,
-            group_ids=identity.group_ids,
-            policy=identity.policy,
-            exp=identity.exp,
-            app=identity.app,
-            scopes=identity.scopes,
-            active_ideate_account=identity.active_ideate_account,
-            active_build_account=identity.active_build_account,
-        )
+        # `replace` rather than a field-by-field rebuild: a field left out of
+        # such a rebuild is dropped silently, and for `restricted` that would
+        # hand a scoped credential its principal's full authority.
+        return replace(identity, type=IdentityType.SYSTEM)
     return identity
 
 
@@ -442,19 +434,4 @@ def from_unverified_jwt(token: str, /, config: SystemConfig | None = None) -> Id
         if identity.email.endswith(_SERVICE_ACCOUNT_SUFFIX)
         else IdentityType.USER
     )
-    return promote_system(
-        Identity(
-            type=derived,
-            id=identity.id,
-            email=identity.email,
-            accounts=identity.accounts,
-            group_ids=identity.group_ids,
-            policy=identity.policy,
-            exp=identity.exp,
-            app=identity.app,
-            scopes=identity.scopes,
-            active_ideate_account=identity.active_ideate_account,
-            active_build_account=identity.active_build_account,
-        ),
-        config,
-    )
+    return promote_system(replace(identity, type=derived), config)

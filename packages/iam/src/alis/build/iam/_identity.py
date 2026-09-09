@@ -85,6 +85,11 @@ class Identity:
     scopes: list[str] | None = None
     active_ideate_account: IdeateAccount | None = None
     active_build_account: BuildAccount | None = None
+    authz_roles: list[str] | None = None
+    """The issuer's role allowlist. Carried, never enforced here."""
+
+    restricted: bool = False
+    """Suppresses the privilege and open-role bypasses."""
 
     def policy_member(self) -> str:
         """Returns the member string to use in IAM policy bindings.
@@ -119,8 +124,8 @@ class Identity:
         return (config or system_config()).is_admin_email(self.email)
 
     def is_privileged(self, config: SystemConfig | None = None) -> bool:
-        """Reports whether this identity bypasses role and permission checks."""
-        return self.is_system() or self.is_admin(config)
+        """Reports whether this credential bypasses role and permission checks."""
+        return (self.is_system() or self.is_admin(config)) and not self.restricted
 
 
 SYSTEM_IDENTITY = Identity(type=IdentityType.SYSTEM, id="system")
