@@ -1,0 +1,17 @@
+Task: grpc-tests (22/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_grpc.py — 11 tests over TestGetOperation,
+TestWaitOperation, TestRegistration.
+
+Red verified: ModuleNotFoundError on alis.build.lro.grpc.
+
+Registration is asserted against a fake registrar that records what it was
+given, because grpc.Server does not expose its registered handlers. The
+assertion is on the service name, so registering the wrong service would fail.
+
+The servicer under test is configured with a 10ms poll, so the two wait tests
+finish well under a second rather than sleeping the 1s production default.
+
+The missing-extra import guard cannot be exercised while grpcio is installed;
+scripts/check_bare_core.py covers it in P6, which is where the other packages
+assert the same thing.
