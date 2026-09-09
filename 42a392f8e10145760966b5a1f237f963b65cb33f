@@ -15,3 +15,17 @@ Two things worth knowing:
    DeleteOperation off the servicer. Verified they are inherited.
 2. WaitOperation sleeps min(delay, time left) rather than the full delay, so it
    cannot overshoot the deadline by up to max_poll_delay on its last iteration.
+
+--- Phase checkpoint: P5 Servers ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 771 passed
+(141 in packages/lro).
+
+Manual verification proposed and confirmed by the user:
+1. Callback route drives a bare ASGI app with no web framework installed:
+   status 200, operation done, unrelated GET passed through
+2. OperationsServicer's base comes from google.longrunning.operations_pb2_grpc,
+   so a client generated from the same protos will talk to it
+3. List/Cancel/Delete remain the inherited UNIMPLEMENTED defaults, matching Go
+
+User response: approved, checkpoint and continue.
