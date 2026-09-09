@@ -1,0 +1,9 @@
+Task wire-format-tests (5/17), track iamscoped_20260909.
+
+32 red tests: encoding fragments, last-two-key ordering, decode of absent vs
+null vs empty, boolean type refusal, legacy-token defaults, and 16 round-trip
+cases (4 transports x 4 fixtures).
+
+Also updated 6 pre-existing byte-exact fixtures plus CANONICAL_JWT, which the
+plan had not anticipated. The wire format genuinely changed, so those fixtures
+are part of the red.
