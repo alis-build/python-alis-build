@@ -1,0 +1,23 @@
+Task: asgi-impl (21/30, track lrocore_20260909)
+
+Created:
+- asgi.py — ResumeMiddleware, plus the Scope/Message/Receive/Send/ASGIApp aliases
+
+Modified:
+- _client.py — set_callback_prefix; handler_for and resume_now now raise typed errors
+- _errors.py — HandlerNotFoundError, HandlerError
+- __init__.py — exports
+- tests/test_asgi.py — helpers typed with the package's own ASGI aliases
+
+Green: 131 in packages/lro, ruff clean, mypy strict clean over 93 files.
+
+Two corrections made before commit:
+1. The middleware first told 404 from 500 by matching 'no resumable handler
+   registered' inside the error message. Replaced with distinct exception types.
+2. The test helpers were typed dict[str, Any] where ASGI is MutableMapping.
+   Retyping them against the package's exported aliases also proves those
+   aliases are usable from outside.
+
+The prefix override writes through to the client rather than being kept locally,
+because the client builds callback URLs from it. Two copies would let the URL
+scheduled and the path served drift apart.
