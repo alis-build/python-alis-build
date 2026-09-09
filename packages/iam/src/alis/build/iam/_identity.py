@@ -86,10 +86,54 @@ class Identity:
     active_ideate_account: IdeateAccount | None = None
     active_build_account: BuildAccount | None = None
     authz_roles: list[str] | None = None
-    """The issuer's role allowlist. Carried, never enforced here."""
+    """The roles a scoped credential is limited to.
+
+    This package only carries the value. Only the service that issued the
+    credential may interpret or enforce it.
+
+    The values are that issuer's own role vocabulary and nothing more. Role ids
+    are unnamespaced strings registered into a process-local map by
+    :meth:`~alis.build.iam.authz.Registry.add_role_permissions`, so the same
+    string routinely means different permissions in different services, and no
+    two services need agree. A service that trims its own roles against an
+    allowlist minted elsewhere is comparing strings that were never in the same
+    vocabulary: it denies most of what it should allow and grants whatever
+    happens to collide.
+
+    Conventional names collide the most. A name obvious enough for one service
+    to reach for is obvious to every other, so the same id ends up registered
+    widely while each service attaches its own permissions to it. The more
+    familiar the name, the less its presence in an allowlist tells you.
+
+    So carriage is all this field can safely be. Treat an allowlist minted by
+    another service as opaque: forward it untouched, or ignore it. A credential
+    that must be scoped across a service boundary has to be expressed in
+    something both ends define, such as a policy, not in these ids.
+
+    ``None`` (the claim absent or null) means unrestricted. An empty list (the
+    claim present as ``[]``) means restricted to no roles at all, which is the
+    most restricted credential there is. Never normalise empty to ``None`` and
+    never omit it when encoding: collapsing the two turns the most restricted
+    credential into the least restricted one.
+    """
 
     restricted: bool = False
-    """Suppresses the privilege and open-role bypasses."""
+    """Marks a credential that may never exceed the roles it explicitly carries.
+
+    The system and admin bypass in :meth:`is_privileged` and the open-role
+    bypass in :mod:`alis.build.iam.authz` do not apply to it. Absent means
+    ``False``, so existing callers see no change.
+
+    :meth:`is_system` and :meth:`is_admin` still report who the principal is;
+    only :meth:`is_privileged` is affected. This is also distinct from any
+    issuer claim describing how the holder authenticated: authorization must key
+    off ``restricted``, not off the credential kind.
+
+    Restriction is fail-open across versions. A consumer that predates this
+    field ignores the claim and grants the credential its principal's full
+    authority, so issuers have to keep their own guards until every consumer has
+    upgraded.
+    """
 
     def policy_member(self) -> str:
         """Returns the member string to use in IAM policy bindings.
@@ -124,7 +168,15 @@ class Identity:
         return (config or system_config()).is_admin_email(self.email)
 
     def is_privileged(self, config: SystemConfig | None = None) -> bool:
-        """Reports whether this credential bypasses role and permission checks."""
+        """Reports whether this credential bypasses role and permission checks.
+
+        True for system and admin identities unless the credential is
+        :attr:`restricted`.
+
+        Bypass decisions must use this rather than :meth:`is_system` or
+        :meth:`is_admin`, which describe the principal only. Keying off those
+        instead lets a restricted credential exceed the roles it carries.
+        """
         return (self.is_system() or self.is_admin(config)) and not self.restricted
 
 

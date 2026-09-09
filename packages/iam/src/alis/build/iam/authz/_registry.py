@@ -105,6 +105,23 @@ class Registry:
     ) -> tuple[str, ...]:
         """Registers the permissions a role grants.
 
+        Role ids are unnamespaced and scoped to the registering process. The map
+        lives in this registry, so an id registered here and the same id
+        registered in another service are unrelated strings that happen to
+        match, and each may grant entirely different permissions. That is fine,
+        and needs no guard, so long as no id is carried across a service
+        boundary as authorization data.
+
+        Do not do that. Nothing that leaves this process, a token claim
+        especially, can be read elsewhere as naming the permissions registered
+        here. See :attr:`~alis.build.iam.Identity.authz_roles`, which carries
+        such ids and is meaningful only to the service that minted them.
+
+        Qualifying ids by service, so they could be reasoned about across a
+        boundary, would be the fix if cross-service role comparison were ever
+        wanted. It is not done because every policy binding already stored names
+        a bare string, making it a data migration rather than a change here.
+
         Args:
             role: The role name, such as ``"roles/viewer"``.
             permissions: Permissions the role grants directly.
@@ -141,6 +158,18 @@ class Registry:
         particular: a check for an open role succeeds for any caller at all,
         authenticated or not. Every permission the role grants becomes
         world-reachable along with it.
+
+        The exception is a credential marked
+        :attr:`~alis.build.iam.Identity.restricted`, which is never granted an
+        open role.
+
+        The id is process-local in the way :meth:`add_role_permissions`
+        describes, and open roles are where that bites hardest. An open role
+        usually takes a conventional name, so many services register the same id
+        while each grants an entirely different set of permissions behind it,
+        and being open it is reached without any grant to the caller. Never
+        treat an open role id from one service as naming the same authority in
+        another.
 
         Raises:
             RegistryFrozenError: If the registry has been frozen.

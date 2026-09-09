@@ -59,6 +59,46 @@ An admin keeps their identity type, so resource names and audit trails still
 say "user". The environment's own service account is registered automatically
 when `ALIS_OS_PROJECT` is set.
 
+### Scoped credentials
+
+A credential can be issued below the authority of the principal it names.
+`restricted` switches off both bypasses — the system and admin one, and the
+open-role one in `authz` — so the credential passes only for roles it
+explicitly carries.
+
+```python
+scoped = iam.Identity(
+    type=iam.IdentityType.USER,
+    id="1934872948",
+    email="admin@example.com",
+    restricted=True,
+    authz_roles=["roles/app.developer"],
+)
+
+scoped.is_admin()  # True — the principal is still an admin
+scoped.is_privileged()  # False — but this credential does not bypass
+```
+
+`authz_roles` carries the issuing service's role allowlist. This package never
+enforces it: role ids are unnamespaced and registered per process, so the same
+id routinely means different permissions in different services. Only the
+service that minted an allowlist can read it.
+
+The difference between an absent allowlist and an empty one is load-bearing:
+
+| Claim in the token | `authz_roles` | Meaning |
+| --- | --- | --- |
+| absent, or `null` | `None` | unrestricted |
+| `"authz_roles": []` | `[]` | restricted to no roles at all |
+| `"authz_roles": ["roles/x"]` | `["roles/x"]` | restricted to those roles |
+
+Never normalise the empty case to `None`: collapsing the two turns the most
+restricted credential there is into the least restricted one.
+
+`restricted` is fail-open across versions. A consumer that predates it ignores
+the claim and grants the credential full authority, so an issuer keeps its own
+guards until every consumer has upgraded.
+
 ## Carrying it through a request
 
 The identity is ambient, held in a context variable rather than passed down
@@ -123,6 +163,9 @@ def configure_authorization() -> None:
     add_role_permissions("roles/admin", ["/example.v1.Books/Delete"], inherits=["roles/viewer"])
     default_registry().freeze()
 ```
+
+A restricted identity never passes via an open role or the privileged bypass;
+it passes only for roles it explicitly carries.
 
 `freeze()` closes the registry to further changes and logs anything suspicious
 about it, such as a permission an open role has made reachable by everyone.
@@ -203,7 +246,14 @@ identity = await client.verified_identity(bearer_token)
 
 `authenticate(tokens)` checks a stored token set and renews it only if the
 access token has actually expired, returning whether it did so you know when to
-persist. `SyncAuthnClient` offers the same surface for a blocking server.
+persist. The renewed token is validated too, against the same audience — a
+refresh is not a way around a check the original token failed.
+`SyncAuthnClient` offers the same surface for a blocking server.
+
+The `aud` claim is accepted in both forms RFC 7519 §4.1.3 allows, a single
+string or an array of strings. A token passes when any audience it names is one
+you asked for, and a token naming no audience at all is accepted, since not
+every issuer sets one.
 
 Only RS256 signatures are verified. Published keys are cached with a TTL and a
 minimum refresh interval, and concurrent misses trigger one fetch rather than
