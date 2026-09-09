@@ -8,6 +8,19 @@ Storage is a seam. Pass any :class:`OperationStore`; the in-memory one in
 :mod:`alis.build.lro.testing` makes the whole workflow testable with no cloud.
 """
 
+from __future__ import annotations
+
+from ._config import Config, config_from_env, resolve_cloud_tasks_location
+from ._errors import ConfigError, LroError, MissingDependencyError
+
 __version__ = "0.1.0"
 
-__all__ = ["__version__"]
+__all__ = [
+    "Config",
+    "ConfigError",
+    "LroError",
+    "MissingDependencyError",
+    "__version__",
+    "config_from_env",
+    "resolve_cloud_tasks_location",
+]
