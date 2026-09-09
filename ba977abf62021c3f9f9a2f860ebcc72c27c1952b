@@ -1,0 +1,8 @@
+Task identity-model-impl (3/17), track iamscoped_20260909.
+
+Identity gains authz_roles (list[str] | None) and restricted (bool).
+is_privileged is now (is_system or is_admin) and not restricted.
+Both wire reconstruction paths moved to dataclasses.replace.
+
+Suite green (416 passed), mypy strict clean, ruff clean. The wire codec does
+not carry the claims yet; that is P2.
