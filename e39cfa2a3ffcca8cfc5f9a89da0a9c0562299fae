@@ -1,0 +1,8 @@
+Task refresh-validation-impl (12/17), track iamscoped_20260909.
+
+Closes the applicable half of alis-exchange/go-alis-build#107. Suite green at
+441 passed, mypy strict clean.
+
+Two pre-existing tests repaired as predicted in the plan: both drove
+authenticate with a token_response of "new-at" and called the result a
+success.
