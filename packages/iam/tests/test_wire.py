@@ -7,6 +7,8 @@ every other service on the platform.
 
 from __future__ import annotations
 
+from dataclasses import fields
+
 import pytest
 
 from alis.build.iam import (
@@ -17,12 +19,14 @@ from alis.build.iam import (
     IdentityDecodeError,
     IdentityType,
     Seat,
+    SystemConfig,
     b64_std_decode,
     b64url_decode,
     b64url_encode,
     dumps,
     from_unverified_jwt,
     loads,
+    promote_system,
     unsigned_jwt,
 )
 
@@ -232,3 +236,49 @@ def test_standard_base64_rejects_junk() -> None:
     """Python discards non-alphabet bytes without validate=True; the format must not."""
     with pytest.raises(IdentityDecodeError):
         b64_std_decode("AA*A")
+
+
+# -- reconstruction ---------------------------------------------------------
+
+
+def _populated() -> Identity:
+    """An identity with every field set to something distinguishable."""
+    return Identity(
+        type=IdentityType.USER,
+        id="1934872948",
+        email="john@example.com",
+        accounts={
+            "1": Account(
+                seats={"1": Seat(plan=1, seat=2)},
+                ideate_account_credit_limit=1.5,
+                ideate_user_credit_limit=2.5,
+            )
+        },
+        group_ids=["df913r888"],
+        policy="",
+        exp=1893456000,
+        app="app-id",
+        scopes=["scope-a"],
+        active_ideate_account=IdeateAccount(account_id="ideate-1"),
+        active_build_account=BuildAccount(account_id="build-1"),
+        authz_roles=["roles/app.developer"],
+        restricted=True,
+    )
+
+
+def test_promote_system_carries_every_field(system_config: SystemConfig) -> None:
+    """A field dropped here is silently lost, and for `restricted` that fails open.
+
+    Iterating the dataclass fields rather than listing them means a field added
+    later is covered without this test being edited again.
+    """
+    identity = _populated()
+    system_config.add_system_email(identity.email)
+
+    promoted = promote_system(identity, system_config)
+
+    assert promoted.type == IdentityType.SYSTEM
+    for field in fields(Identity):
+        if field.name == "type":
+            continue
+        assert getattr(promoted, field.name) == getattr(identity, field.name), field.name

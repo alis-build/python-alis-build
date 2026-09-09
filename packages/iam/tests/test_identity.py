@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from alis.build.iam import (
@@ -150,3 +152,40 @@ def test_registry_snapshots_are_immutable(system_config: SystemConfig) -> None:
     system_config.add_admin_email("a@example.com")
     assert system_config.admin_emails == frozenset({"a@example.com"})
     assert isinstance(system_config.admin_emails, frozenset)
+
+
+# -- scoped credentials ----------------------------------------------------
+
+
+def test_scoped_claims_default_to_unrestricted() -> None:
+    """Absent claims must mean unrestricted, or every existing token changes meaning."""
+    identity = Identity(type=IdentityType.USER, id="1", email="a@example.com")
+    assert identity.authz_roles is None
+    assert identity.restricted is False
+
+
+def test_restricted_admin_is_not_privileged(system_config: SystemConfig) -> None:
+    admin = Identity(
+        type=IdentityType.USER,
+        id="restricted-admin-user-id",
+        email="restricted-admin@example.com",
+        restricted=True,
+    )
+    system_config.add_admin_email(admin.email)
+
+    # The principal is still an admin; only the credential is restricted.
+    assert admin.is_admin(system_config) is True
+    assert admin.is_system() is False
+    assert admin.is_privileged(system_config) is False
+    assert admin.type == IdentityType.USER
+    assert admin.policy_member() == "user:restricted-admin-user-id"
+
+    # The same admin without the claim keeps the bypass it has always had.
+    assert replace(admin, restricted=False).is_privileged(system_config) is True
+
+
+def test_restricted_system_is_not_privileged() -> None:
+    system = Identity(type=IdentityType.SYSTEM, id="system", restricted=True)
+    assert system.is_system() is True
+    assert system.is_privileged() is False
+    assert SYSTEM_IDENTITY.is_privileged() is True
