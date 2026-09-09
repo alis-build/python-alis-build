@@ -263,11 +263,14 @@ async def test_a_live_token_is_left_alone(server: Server, make_token: Any) -> No
 
 
 async def test_an_expired_token_is_renewed(server: Server, make_token: Any) -> None:
+    # A real token, because the renewed one is validated like any other.
+    renewed_access = make_token(kid="key-1")
+    server.token_response = (200, {"access_token": renewed_access, "id_token": "new-it"})
     tokens = Tokens(access_token=make_token(kid="key-1", expires_in=-3600), refresh_token="rt")
     result = await build_async(server).authenticate(tokens)
 
     assert result.refreshed is True
-    assert result.tokens.access_token == "new-at"
+    assert result.tokens.access_token == renewed_access
     assert result.tokens.refresh_token == "rt"
     assert server.token_posts[0]["grant_type"] == "refresh_token"
 
@@ -313,6 +316,7 @@ def test_sync_validate_and_cache(server: Server, make_token: Any) -> None:
 
 
 def test_sync_expired_token_is_renewed(server: Server, make_token: Any) -> None:
+    server.token_response = (200, {"access_token": make_token(kid="key-1"), "id_token": "new-it"})
     tokens = Tokens(access_token=make_token(kid="key-1", expires_in=-3600), refresh_token="rt")
     result = build_sync(server).authenticate(tokens)
     assert result.refreshed is True

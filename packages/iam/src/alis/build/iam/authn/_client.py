@@ -186,6 +186,9 @@ class AuthnClient(BaseAuthnClient):
         bad signature, or an unreachable key endpoint all raise instead, so a
         transient outage does not spend refresh tokens.
 
+        The renewed token is validated too, against the same audience. A refresh
+        is not a way around a check the original token failed.
+
         Returns:
             The tokens to use, and whether they were renewed. Persist them if
             they were.
@@ -196,6 +199,11 @@ class AuthnClient(BaseAuthnClient):
             if not tokens.refresh_token:
                 raise
             renewed = await self.refresh(tokens)
+            # The token the issuer just minted goes through the same door as
+            # any other. Returning it unchecked makes the audience check
+            # bypassable by anyone holding a refresh token, which for a browser
+            # session is always.
+            await self.validate_token(renewed.access_token, now=now, audience=audience)
             return AuthenticationResult(tokens=renewed, refreshed=True)
         return AuthenticationResult(tokens=tokens, refreshed=False)
 

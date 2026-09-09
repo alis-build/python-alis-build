@@ -139,13 +139,22 @@ class SyncAuthnClient(BaseAuthnClient):
         now: datetime | None = None,
         audience: str | Sequence[str] | None = None,
     ) -> AuthenticationResult:
-        """Checks a token set, renewing it only if the access token expired."""
+        """Checks a token set, renewing it only if the access token expired.
+
+        The renewed token is validated too, against the same audience.
+        """
         try:
             self.validate_token(tokens.access_token, now=now, audience=audience)
         except TokenExpiredError:
             if not tokens.refresh_token:
                 raise
-            return AuthenticationResult(tokens=self.refresh(tokens), refreshed=True)
+            renewed = self.refresh(tokens)
+            # The token the issuer just minted goes through the same door as
+            # any other. Returning it unchecked makes the audience check
+            # bypassable by anyone holding a refresh token, which for a browser
+            # session is always.
+            self.validate_token(renewed.access_token, now=now, audience=audience)
+            return AuthenticationResult(tokens=renewed, refreshed=True)
         return AuthenticationResult(tokens=tokens, refreshed=False)
 
     # -- login flow --------------------------------------------------------
