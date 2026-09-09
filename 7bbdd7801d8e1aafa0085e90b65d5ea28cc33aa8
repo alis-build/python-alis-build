@@ -1,0 +1,18 @@
+Task: wiring-tests (11/16, track lrocloud_20260909)
+
+Created packages/lro/tests/test_wiring.py — 15 tests over TestCloudBranch,
+TestSchedulingFailure, TestConstruction, TestClose, TestAsyncWiring.
+
+Red verified: TypeError, Client.__init__ has no 'queue' keyword.
+
+test_store_stays_optional_and_defaults_are_not_built_when_given guards the
+widening this task performs: making 'store' optional must not change behaviour
+for anything written against the core track.
+
+test_custom_prefix_is_reflected_in_the_url is the payoff for keeping the
+callback prefix on the client rather than on the middleware — the URL scheduled
+and the path served come from one value.
+
+test_the_original_error_is_the_cause checks __cause__ rather than the message,
+so the underlying API error stays reachable for anyone debugging a queue
+misconfiguration.
