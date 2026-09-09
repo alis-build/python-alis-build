@@ -212,7 +212,9 @@ def dumps(identity: Identity, /) -> bytes:
         f'"app":{_quote(identity.app)},'
         f'"scopes":{_string_list(identity.scopes)},'
         f'"active_ideate_account":{_ideate_account(identity.active_ideate_account)},'
-        f'"active_build_account":{_build_account(identity.active_build_account)}'
+        f'"active_build_account":{_build_account(identity.active_build_account)},'
+        f'"authz_roles":{_string_list(identity.authz_roles)},'
+        f'"restricted":{"true" if identity.restricted else "false"}'
         "}"
     ).encode()
 
@@ -238,6 +240,15 @@ def _require_int(payload: dict[str, Any], key: str) -> int:
     # bool is an int subclass in Python, but the format wants a real integer.
     if not isinstance(value, int) or isinstance(value, bool):
         raise IdentityDecodeError(f"field {key!r} must be an integer, got {type(value).__name__}")
+    return value
+
+
+def _require_bool(payload: dict[str, Any], key: str) -> bool:
+    value = payload.get(key)
+    if value is None:
+        return False
+    if not isinstance(value, bool):
+        raise IdentityDecodeError(f"field {key!r} must be a boolean, got {type(value).__name__}")
     return value
 
 
@@ -343,6 +354,8 @@ def _from_payload(payload: dict[str, Any]) -> Identity:
         active_build_account=_parse_build_account(
             _require_mapping(payload, "active_build_account")
         ),
+        authz_roles=_require_str_list(payload, "authz_roles"),
+        restricted=_require_bool(payload, "restricted"),
     )
 
 
