@@ -16,3 +16,16 @@ branches that need a store failing mid-recovery.
 The LRO check exercises a full lifecycle rather than a version assertion,
 because 'the core works with no extras' is a claim about behaviour, not about
 whether an import statement succeeds.
+
+--- Phase checkpoint: P6 Async and ship ---
+
+Automated: make check 787 passed; make check-bare 3/3 'bare core ok';
+make check-pip all three wheels import under plain pip. Coverage 96%.
+
+Manual verification proposed and confirmed by the user:
+1. Both packaging gates pass, lro's bare-core check running a full lifecycle
+2. alis.build.lro.grpc names the grpc extra and its install command
+3. AsyncClient/Client and AsyncOperation/Operation surfaces match
+4. Reviewed packages/lro/README.md
+
+User response: approved, checkpoint and complete the track.
