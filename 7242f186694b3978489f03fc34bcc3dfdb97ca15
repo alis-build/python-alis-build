@@ -17,3 +17,16 @@ workflow requires.
 Worth knowing: ruff formats Python code blocks inside Markdown here, so README
 examples are format-checked like source. That is how a stray alignment space in
 the Backends example turned up in make check.
+
+--- Phase checkpoint: Q3 Wiring and docs ---
+
+Automated: make check 845 passed; make check-bare 3/3 with all three lro extras
+naming themselves; make check-pip 3/3. Coverage 95%.
+
+Manual verification proposed and confirmed by the user:
+1. All three extras name themselves and their install command
+2. Callback URL and derived table name both correct, and agree with the
+   Terraform contract and the ASGI route
+3. Reviewed the Infrastructure contract section of the README
+
+User response: approved, checkpoint and complete.
