@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Protocol, TypeVar, cast
 
 from google.longrunning import operations_pb2
@@ -41,6 +41,14 @@ class _Persist(Protocol):
     def update(self, record: OperationRecord) -> None: ...
 
 
+class _Resumer(Protocol):
+    """The part of the client an operation needs to schedule its own resume."""
+
+    def handler_for(self, path: str) -> object: ...
+    def is_local(self) -> bool: ...
+    def schedule_local(self, path: str, name: str, delay: float) -> None: ...
+
+
 class Operation:
     """A long-running operation, and the operations you can perform on it.
 
@@ -53,11 +61,18 @@ class Operation:
         store: Where :meth:`save` writes.
     """
 
-    __slots__ = ("_record", "_store")
+    __slots__ = ("_client", "_record", "_store")
 
-    def __init__(self, *, record: OperationRecord, store: _Persist) -> None:
+    def __init__(
+        self,
+        *,
+        record: OperationRecord,
+        store: _Persist,
+        client: _Resumer | None = None,
+    ) -> None:
         self._record = record
         self._store = store
+        self._client = client
 
     @property
     def pb(self) -> operations_pb2.Operation:
@@ -146,6 +161,37 @@ class Operation:
         """Stages a new checkpoint label and writes the row."""
         self.set_resume_point(resume_point)
         self.save()
+
+    def resume_via_tasks(self, path: str, delay: float | timedelta = 0) -> None:
+        """Schedules this operation to be resumed later by a named handler.
+
+        Locally the handler runs on a timer in this process. On Cloud Run it is
+        scheduled as a Cloud Task, which arrives as an HTTP callback — possibly
+        on a different instance, which is why the handler must have been
+        registered at startup.
+
+        Args:
+            path: A callback path already registered on the client.
+            delay: How long to wait, in seconds or as a timedelta.
+
+        Raises:
+            LroError: No handler is registered for that path, or the client has
+                no task queue to schedule with.
+        """
+        if self._client is None:
+            raise LroError(f"operation {self.name} is not attached to a client")
+        # Validate before scheduling: a task pointing at an unknown path would
+        # be dispatched, fail, and retry until the queue gave up.
+        self._client.handler_for(path)
+
+        seconds = delay.total_seconds() if isinstance(delay, timedelta) else float(delay)
+        if self._client.is_local():
+            self._client.schedule_local(path, self.name, seconds)
+            return
+        raise LroError(
+            f"no task queue is configured, so operation {self.name} cannot be resumed "
+            f"through Cloud Tasks; set Config.local=True to resume in process"
+        )
 
     def save(self) -> None:
         """Writes the current row."""
