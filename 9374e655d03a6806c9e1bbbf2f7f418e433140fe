@@ -1,0 +1,14 @@
+Follow-up to packaging-gates (track lrocore_20260909)
+
+Modified:
+- .github/workflows/ci.yml — bare-core matrix now [alog, iam, lro]
+- scripts/new_package.py — its 'next steps' hint now names check_bare_core.py
+  and the CI matrix, the two places it previously omitted
+
+Found while synchronising project documentation at the end of the track, not by
+a failing test: make check-bare loops over ls packages and so covered lro
+locally, while CI's matrix is a hand-written list that did not. The local gate
+passing is what made this invisible.
+
+The plan's FR-1 named three registration points (root pyproject, README,
+check_bare_core). CI was a fourth and the plan missed it.
