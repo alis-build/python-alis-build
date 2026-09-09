@@ -10,6 +10,7 @@ Storage is a seam. Pass any :class:`OperationStore`; the in-memory one in
 
 from __future__ import annotations
 
+from ._async import AsyncClient, AsyncOperation, AsyncResumeHandler
 from ._client import Client, ResumeHandler
 from ._config import Config, config_from_env, resolve_cloud_tasks_location
 from ._errors import (
@@ -31,6 +32,9 @@ __version__ = "0.1.0"
 
 __all__ = [
     "TASK_DEADLINE",
+    "AsyncClient",
+    "AsyncOperation",
+    "AsyncResumeHandler",
     "Client",
     "Config",
     "ConfigError",
