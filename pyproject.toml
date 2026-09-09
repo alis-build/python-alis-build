@@ -25,7 +25,7 @@ alis-build-lro = { workspace = true }
 dev = [
     "alis-build-alog[grpc]",
     "alis-build-iam[authn,authz,grpc]",
-    "alis-build-lro[grpc,spanner]",
+    "alis-build-lro[grpc,spanner,tasks]",
     "git-cliff>=2.13",
     "mypy>=2.3.1",
     "pytest>=9.1.1",

@@ -12,11 +12,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from alis.build.lro.tasks import AsyncCloudTasksQueue, CloudTasksQueue
 from google.api_core import exceptions as api_exceptions
 from google.cloud.tasks_v2 import HttpMethod
 
 from alis.build.lro import Config
+from alis.build.lro.tasks import AsyncCloudTasksQueue, CloudTasksQueue
 
 WHEN = datetime(2026, 9, 9, 12, 0, tzinfo=UTC)
 
@@ -42,7 +42,7 @@ class FakeTasksClient:
 
 
 class FakeAsyncTasksClient(FakeTasksClient):
-    async def create_task(self, request: Any = None, **kwargs: Any) -> Any:  # type: ignore[override]
+    async def create_task(self, request: Any = None, **kwargs: Any) -> Any:
         return FakeTasksClient.create_task(self, request, **kwargs)
 
     async def close(self) -> None:  # type: ignore[override]
