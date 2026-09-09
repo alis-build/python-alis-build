@@ -1,0 +1,8 @@
+Task docs-parity (14/17), track iamscoped_20260909.
+
+Docstrings on Identity.authz_roles, Identity.restricted, Identity.is_privileged,
+Registry.add_role_permissions and Registry.add_open_role_permissions.
+README gains a Scoped credentials section, an open-role note under
+Authorization, and the aud-forms note under Authentication.
+
+No behaviour change: 431 iam tests still pass, mypy strict clean.
