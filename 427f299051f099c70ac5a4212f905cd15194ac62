@@ -1,0 +1,7 @@
+Task authz-impl (9/17), track iamscoped_20260909.
+
+One-line gate on the open-role branch of has_role. Suite green at 436 passed,
+mypy strict clean.
+
+Deliberately not ported: the slices.Concat fix from 250aed0. Python has no
+spare-capacity aliasing to guard against here.
