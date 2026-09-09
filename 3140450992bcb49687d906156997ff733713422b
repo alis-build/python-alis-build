@@ -1,0 +1,17 @@
+Task: resume-tests (17/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_resume.py — 15 tests over TestLocalResume,
+TestLocalTriState, TestHandlerFailure, TestInvokeDirectly.
+
+Red verified: 15 failed, every one AttributeError on
+Operation.resume_via_tasks or Client.resume_now. No typos, no import errors.
+
+All four tri-state paths are covered: None+K_SERVICE unset -> local,
+None+K_SERVICE set -> cloud, True and False each overriding the environment.
+
+test_a_handler_that_already_failed_the_operation_is_not_overwritten pins that
+the failure policy must not clobber a reason the handler already recorded — the
+handler's own message is more useful than the exception that followed it.
+
+Waits poll with a 2s ceiling at 5ms intervals rather than sleeping, so the suite
+stays fast and cannot flake into a false pass on a loaded machine.
