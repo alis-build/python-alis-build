@@ -67,7 +67,63 @@ for module, extra in EXTRAS:
 print("bare core ok")
 """
 
-CHECKS = {"alog": ALOG, "iam": IAM}
+LRO = """
+from dataclasses import dataclass
+
+import alis.build.lro as lro
+from alis.build.lro import Config, MissingDependencyError
+from alis.build.lro.testing import InMemoryStore
+
+
+@dataclass
+class State:
+    owner: str
+    polls: int = 0
+
+
+config = Config(
+    neuron="launchpad-v1",
+    project="p",
+    spanner_project="sp",
+    spanner_instance="si",
+    spanner_database="sd",
+    cloud_tasks_project="p",
+    cloud_tasks_location="europe-west1",
+    cloud_tasks_queue="launchpad-v1-operations",
+    cloud_tasks_service_account="alis-build@p.iam.gserviceaccount.com",
+    host="https://launchpad-v1-42.europe-west1.run.app",
+    local=True,
+)
+assert lro.resolve_cloud_tasks_location("africa-south1") == "europe-west1"
+assert lro.decode_state(lro.encode_state(State("users/1", 2)), State) == State("users/1", 2)
+
+from google.protobuf.struct_pb2 import Struct
+
+store = InMemoryStore()
+client = lro.Client(config, store=store)
+finished = []
+
+
+def create_agent(op):
+    op.complete(Struct())
+    finished.append(op.name)
+
+
+client.add_resumable_handler("create-agent", create_agent)
+op = client.new_operation("operations/abc", Struct())
+op.save_private_state(State(owner="users/1"))
+client.resume_now("create-agent", "operations/abc")
+assert finished == ["operations/abc"], finished
+assert client.get_operation_pb("operations/abc").done
+
+from alis.build.lro.asgi import ResumeMiddleware
+
+assert ResumeMiddleware is not None
+
+EXTRAS = [("alis.build.lro.grpc", "grpc")]
+"""
+
+CHECKS = {"alog": ALOG, "iam": IAM, "lro": LRO}
 
 
 def main() -> int:
