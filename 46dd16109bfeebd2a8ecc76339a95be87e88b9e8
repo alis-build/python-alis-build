@@ -1,0 +1,21 @@
+Tasks: tasks-tests and async-tasks-tests (6/16 and 8/16, track lrocloud_20260909)
+
+Created packages/lro/tests/test_tasks.py — 30 tests over TestIdempotency,
+TestRetryPolicy, TestRequestShape, TestFromConfig, TestLifecycle,
+TestAsyncQueue.
+
+Red verified: ModuleNotFoundError on alis.build.lro.tasks.
+
+Both test todos land in this one commit. The async tests assert the same request
+shape as the sync ones — test_request_shape_matches_the_sync_queue compares the
+two requests field for field — so splitting them across two commits would have
+meant writing the comparison before one of its two operands existed.
+
+Ported from tasks_test.go: transient retry under one task name, ALREADY_EXISTS
+after a retry as success, permanent error not retried. Extended with the full
+retry set as a parametrize (ABORTED, DEADLINE_EXCEEDED, INTERNAL,
+RESOURCE_EXHAUSTED, UNAVAILABLE), three permanent errors, and the request shape
+the Go tests leave implicit: parent, PUT, url, OIDC service account, schedule
+time, and the 30-minute dispatch deadline.
+
+Backoff is nanoseconds in tests, as tasks_test.go does, so nothing sleeps.
