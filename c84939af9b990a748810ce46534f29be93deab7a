@@ -15,3 +15,15 @@ Decoding names what does not fit rather than raising a bare TypeError, because
 the realistic cause is a deploy that added or removed a field while operations
 holding the old shape were still in flight. Keys are sorted on encode so
 re-saving unchanged state produces identical bytes.
+
+--- Phase checkpoint: P3 Operation model ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 706 passed
+(76 in packages/lro).
+
+Manual verification proposed and confirmed by the user:
+1. fail() sets google.rpc code 2 (UNKNOWN), not 0 (OK) as Go leaves it
+2. encode_state produces readable JSON: {"owner":"users/123","poll_count":2}
+3. decode_state names the removed field on a deploy-skew mismatch
+
+User response: approved, checkpoint and continue.
