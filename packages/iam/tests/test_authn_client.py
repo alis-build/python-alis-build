@@ -13,6 +13,7 @@ from alis.build.iam import IdentityType
 from alis.build.iam.authn import (
     AuthenticationError,
     AuthnClient,
+    InvalidAudienceError,
     InvalidTokenError,
     SignatureVerificationError,
     SyncAuthnClient,
@@ -354,3 +355,76 @@ def test_from_base_url_derives_the_endpoints() -> None:
         "https://auth.example.com/authorize?"
     )
     client.close()
+
+
+# -- the token a refresh hands back ----------------------------------------
+
+
+async def test_a_refreshed_token_with_the_wrong_audience_is_refused(
+    server: Server, make_token: Any
+) -> None:
+    """A refresh is not a way around the audience check.
+
+    Whoever holds a refresh token would otherwise trade a token minted for
+    another audience for one that is never checked at all.
+    """
+    server.token_response = (
+        200,
+        {"access_token": make_token(kid="key-1", aud="other"), "id_token": "new-it"},
+    )
+    tokens = Tokens(
+        access_token=make_token(kid="key-1", aud="wanted", expires_in=-3600), refresh_token="rt"
+    )
+    with pytest.raises(InvalidAudienceError):
+        await build_async(server).authenticate(tokens, audience="wanted")
+
+
+async def test_a_refreshed_token_that_is_already_expired_is_refused(
+    server: Server, make_token: Any
+) -> None:
+    server.token_response = (
+        200,
+        {"access_token": make_token(kid="key-1", expires_in=-3600), "id_token": "new-it"},
+    )
+    tokens = Tokens(access_token=make_token(kid="key-1", expires_in=-3600), refresh_token="rt")
+    with pytest.raises(TokenExpiredError):
+        await build_async(server).authenticate(tokens)
+
+
+async def test_a_refreshed_token_that_does_not_verify_is_refused(
+    server: Server, make_token: Any
+) -> None:
+    server.token_response = (
+        200,
+        {"access_token": make_token(kid="key-1", sign=False), "id_token": "new-it"},
+    )
+    tokens = Tokens(access_token=make_token(kid="key-1", expires_in=-3600), refresh_token="rt")
+    with pytest.raises(SignatureVerificationError):
+        await build_async(server).authenticate(tokens)
+
+
+async def test_a_valid_refreshed_token_is_returned(server: Server, make_token: Any) -> None:
+    server.token_response = (
+        200,
+        {"access_token": make_token(kid="key-1"), "id_token": "new-it"},
+    )
+    tokens = Tokens(access_token=make_token(kid="key-1", expires_in=-3600), refresh_token="rt")
+    result = await build_async(server).authenticate(tokens)
+
+    assert result.refreshed is True
+    assert result.tokens.refresh_token == "rt"
+
+
+def test_sync_refreshed_token_with_the_wrong_audience_is_refused(
+    server: Server, make_token: Any
+) -> None:
+    """The blocking client carries its own copy of authenticate."""
+    server.token_response = (
+        200,
+        {"access_token": make_token(kid="key-1", aud="other"), "id_token": "new-it"},
+    )
+    tokens = Tokens(
+        access_token=make_token(kid="key-1", aud="wanted", expires_in=-3600), refresh_token="rt"
+    )
+    with pytest.raises(InvalidAudienceError):
+        build_sync(server).authenticate(tokens, audience="wanted")
