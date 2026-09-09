@@ -7,6 +7,7 @@ every other service on the platform.
 
 from __future__ import annotations
 
+import json
 from dataclasses import fields
 
 import pytest
@@ -33,14 +34,16 @@ from alis.build.iam import (
 CANONICAL = (
     '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
     '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,'
-    '"active_ideate_account":null,"active_build_account":null}'
+    '"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}'
 )
 
 CANONICAL_JWT = (
-    "eyJhbGciOiJub25lIn0.eyJUeXBlIjoidXNlciIsInN1YiI6IjE5MzQ4NzI5NDgiLCJlbWFpbCI6ImpvaG5A"
-    "ZXhhbXBsZS5jb20iLCJhY2NvdW50cyI6bnVsbCwiZ3JvdXBzIjpbImRmOTEzcjg4OCJdLCJwb2xpY3kiOiIi"
-    "LCJleHAiOjAsImFwcCI6IiIsInNjb3BlcyI6bnVsbCwiYWN0aXZlX2lkZWF0ZV9hY2NvdW50IjpudWxsLCJh"
-    "Y3RpdmVfYnVpbGRfYWNjb3VudCI6bnVsbH0.###"
+    "eyJhbGciOiJub25lIn0."
+    "eyJUeXBlIjoidXNlciIsInN1YiI6IjE5MzQ4NzI5NDgiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJh"
+    "Y2NvdW50cyI6bnVsbCwiZ3JvdXBzIjpbImRmOTEzcjg4OCJdLCJwb2xpY3kiOiIiLCJleHAiOjAsImFwcCI6"
+    "IiIsInNjb3BlcyI6bnVsbCwiYWN0aXZlX2lkZWF0ZV9hY2NvdW50IjpudWxsLCJhY3RpdmVfYnVpbGRfYWNj"
+    "b3VudCI6bnVsbCwiYXV0aHpfcm9sZXMiOm51bGwsInJlc3RyaWN0ZWQiOmZhbHNlfQ"
+    ".###"
 )
 
 
@@ -62,35 +65,35 @@ def test_unsigned_jwt(user: Identity) -> None:
             Identity(type=""),
             '{"Type":"","sub":"","email":"","accounts":null,"groups":null,"policy":"",'
             '"exp":0,"app":"","scopes":null,"active_ideate_account":null,'
-            '"active_build_account":null}',
+            '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="zero",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u2", accounts={}, group_ids=[], scopes=[]),
             '{"Type":"user","sub":"u2","email":"","accounts":{},"groups":[],"policy":"",'
             '"exp":0,"app":"","scopes":[],"active_ideate_account":null,'
-            '"active_build_account":null}',
+            '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="empty_collections_are_not_null",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="a<b>c&d", email="a&b@example.com", app="<script>"),
             '{"Type":"user","sub":"a\\u003cb\\u003ec\\u0026d","email":"a\\u0026b@example.com",'
             '"accounts":null,"groups":null,"policy":"","exp":0,"app":"\\u003cscript\\u003e",'
-            '"scopes":null,"active_ideate_account":null,"active_build_account":null}',
+            '"scopes":null,"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="html_chars_escaped",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u1", email="jörg.müller@例え.jp"),
             '{"Type":"user","sub":"u1","email":"jörg.müller@例え.jp","accounts":null,'
             '"groups":null,"policy":"","exp":0,"app":"","scopes":null,'
-            '"active_ideate_account":null,"active_build_account":null}',
+            '"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="non_ascii_not_escaped",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u8", exp=-1),
             '{"Type":"user","sub":"u8","email":"","accounts":null,"groups":null,"policy":"",'
             '"exp":-1,"app":"","scopes":null,"active_ideate_account":null,'
-            '"active_build_account":null}',
+            '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="negative_exp",
         ),
     ],
@@ -282,3 +285,72 @@ def test_promote_system_carries_every_field(system_config: SystemConfig) -> None
         if field.name == "type":
             continue
         assert getattr(promoted, field.name) == getattr(identity, field.name), field.name
+
+
+# -- scoped credential claims ----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("identity", "fragment"),
+    [
+        pytest.param(Identity(), '"authz_roles":null', id="nil_roles_are_null"),
+        pytest.param(Identity(), '"restricted":false', id="unrestricted_is_false"),
+        pytest.param(Identity(authz_roles=[]), '"authz_roles":[]', id="empty_roles_are_an_array"),
+        pytest.param(
+            Identity(authz_roles=["roles/x"]), '"authz_roles":["roles/x"]', id="named_roles"
+        ),
+        pytest.param(Identity(restricted=True), '"restricted":true', id="restricted_is_true"),
+    ],
+)
+def test_scoped_claims_encoding(identity: Identity, fragment: str) -> None:
+    """The tripwire for anyone omitting an empty value or normalising null.
+
+    Rendering the empty list as null would turn the most restricted credential
+    there is into an unrestricted one.
+    """
+    assert fragment in dumps(identity).decode()
+
+
+def test_scoped_claims_are_the_last_two_keys() -> None:
+    assert dumps(Identity()).decode().endswith('"authz_roles":null,"restricted":false}')
+
+
+@pytest.mark.parametrize(
+    ("claim", "expected"),
+    [
+        pytest.param({}, None, id="absent_is_unrestricted"),
+        pytest.param({"authz_roles": None}, None, id="null_is_unrestricted"),
+        pytest.param({"authz_roles": []}, [], id="empty_is_restricted_to_nothing"),
+        pytest.param({"authz_roles": ["roles/app.developer"]}, ["roles/app.developer"], id="named"),
+    ],
+)
+def test_authz_roles_decoding(claim: dict[str, object], expected: list[str] | None) -> None:
+    identity = loads(json.dumps({"sub": "1", "email": "a@example.com", **claim}))
+    # `==` cannot tell None from []; the nil-ness is what carries the meaning.
+    assert (identity.authz_roles is None) == (expected is None)
+    assert identity.authz_roles == expected
+
+
+@pytest.mark.parametrize(
+    ("claim", "expected"),
+    [
+        pytest.param({}, False, id="absent"),
+        pytest.param({"restricted": True}, True, id="true"),
+        pytest.param({"restricted": False}, False, id="false"),
+    ],
+)
+def test_restricted_decoding(claim: dict[str, object], expected: bool) -> None:
+    identity = loads(json.dumps({"sub": "1", "email": "a@example.com", **claim}))
+    assert identity.restricted is expected
+
+
+def test_restricted_must_be_a_boolean() -> None:
+    """A string \"true\" must not quietly become truthy."""
+    with pytest.raises(IdentityDecodeError, match="must be a boolean"):
+        loads(json.dumps({"sub": "1", "restricted": "true"}))
+
+
+def test_a_token_minted_before_these_claims_is_unrestricted() -> None:
+    identity = loads(json.dumps({"sub": "1", "email": "a@example.com"}))
+    assert identity.authz_roles is None
+    assert identity.restricted is False
