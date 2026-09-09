@@ -95,7 +95,7 @@ environment out of the picture, which is what tests want.
 from the config. Pass your own to avoid that:
 
 ```python
-client = Client(config, store=InMemoryStore())        # no cloud at all
+client = Client(config, store=InMemoryStore())  # no cloud at all
 client = Client(config, store=my_store, queue=my_queue)
 ```
 

@@ -120,7 +120,11 @@ from alis.build.lro.asgi import ResumeMiddleware
 
 assert ResumeMiddleware is not None
 
-EXTRAS = [("alis.build.lro.grpc", "grpc")]
+EXTRAS = [
+    ("alis.build.lro.grpc", "grpc"),
+    ("alis.build.lro.spanner", "spanner"),
+    ("alis.build.lro.tasks", "tasks"),
+]
 """
 
 CHECKS = {"alog": ALOG, "iam": IAM, "lro": LRO}
