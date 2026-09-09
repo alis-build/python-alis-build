@@ -1,0 +1,17 @@
+Task: state-impl (11/30, track lrocore_20260909)
+
+Created:
+- _state.py — encode_state, decode_state
+
+Modified:
+- _operation.py — set/save/decode_private_state, plus the record property that
+  test_state_is_visible_on_the_record now drives
+- _errors.py — StateCodecError
+- __init__.py — exports
+
+Green: 76 passed, ruff clean, mypy strict clean over 84 files.
+
+Decoding names what does not fit rather than raising a bare TypeError, because
+the realistic cause is a deploy that added or removed a field while operations
+holding the old shape were still in flight. Keys are sorted on encode so
+re-saving unchanged state produces identical bytes.
