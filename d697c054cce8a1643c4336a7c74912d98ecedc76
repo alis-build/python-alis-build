@@ -1,0 +1,20 @@
+Task: client-impl (16/30, track lrocore_20260909)
+
+Created:
+- _client.py — Client, ResumeHandler
+
+Modified:
+- __init__.py — exports
+
+Green: 104 passed, ruff clean, mypy strict clean over 90 files.
+
+store is a required keyword argument. It is deliberately not defaulted to a
+Spanner store that does not exist yet: an error naming a 'spanner' extra this
+distribution does not declare would tell a user to install something
+uninstallable. lrocloud_20260909 widens the parameter and adds that default,
+which is additive.
+
+A _new_message() indirection was written and removed — it returned the base
+Message type, which cost get_operation_pb its real type and broke a caller's
+attribute access under mypy strict. Importing operations_pb2 at module scope,
+as _operation.py already does, is both simpler and correctly typed.
