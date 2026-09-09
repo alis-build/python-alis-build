@@ -1,0 +1,14 @@
+Task: package-readme (27/30, track lrocore_20260909)
+
+Created packages/lro/README.md — purpose, install matrix, the API shape, local
+versus deployed resume, async, testing, and the failure policy.
+
+The testing example first used a config.replace() helper that does not exist —
+it was written and removed back in config-impl for want of a test. Rewritten to
+use stdlib dataclasses.replace, which needs no new API, and the example was then
+executed to confirm it runs.
+
+Every line is within the 80-100 column range the product guidelines set.
+
+No upstream commit SHA and no 'ported from' note: this is an ordinary PyPI
+artifact for external consumers, and that bookkeeping lives in the track spec.
