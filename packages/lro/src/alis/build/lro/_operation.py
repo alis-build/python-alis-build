@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol, TypeVar, cast
+from typing import Any, Protocol, TypeVar, cast
 
 from google.longrunning import operations_pb2
 from google.protobuf import any_pb2
 from google.protobuf.message import Message
 from google.rpc import code_pb2, status_pb2
 
-from ._errors import LroError
+from ._errors import LroError, StateCodecError
+from ._state import decode_state, encode_state
 
 __all__ = ["Operation", "OperationRecord"]
 
 M = TypeVar("M", bound=Message)
+T2 = TypeVar("T2")
 
 
 @dataclass(slots=True)
@@ -69,6 +71,11 @@ class Operation:
         return cast(str, self._record.operation.name)
 
     @property
+    def record(self) -> OperationRecord:
+        """The row this operation wraps."""
+        return self._record
+
+    @property
     def resume_point(self) -> str:
         """The checkpoint label the handler last set."""
         return self._record.resume_point
@@ -104,6 +111,32 @@ class Operation:
                 f"operation {self.name} metadata is not a {message_type.DESCRIPTOR.full_name}"
             )
         return message
+
+    def set_private_state(self, state: object) -> None:
+        """Stages new private workflow state without writing it."""
+        self._record.state = encode_state(state)
+
+    def save_private_state(self, state: object) -> None:
+        """Stages new private workflow state and writes the row."""
+        self.set_private_state(state)
+        self.save()
+
+    def decode_private_state(self, into: type[T2] | None = None) -> Any:
+        """Reads the private state back.
+
+        Args:
+            into: A dataclass type to reconstruct. Omit it for parsed JSON.
+
+        Returns:
+            An instance of ``into``, or the parsed JSON.
+
+        Raises:
+            StateCodecError: The operation has no state, or the stored state no
+                longer fits ``into``.
+        """
+        if not self._record.state:
+            raise StateCodecError(f"operation {self.name} has no private state")
+        return decode_state(self._record.state, into)
 
     def set_resume_point(self, resume_point: str) -> None:
         """Stages a new checkpoint label without writing it."""

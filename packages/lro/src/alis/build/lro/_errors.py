@@ -12,6 +12,7 @@ __all__ = [
     "LroError",
     "MissingDependencyError",
     "OperationNameError",
+    "StateCodecError",
 ]
 
 
@@ -33,3 +34,7 @@ class MissingDependencyError(LroError, ImportError):
 
 class OperationNameError(LroError):
     """An operation resource name is missing or malformed."""
+
+
+class StateCodecError(LroError):
+    """Private state could not be encoded, or no longer fits the type given."""
