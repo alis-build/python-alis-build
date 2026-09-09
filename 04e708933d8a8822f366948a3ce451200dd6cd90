@@ -1,0 +1,24 @@
+Tasks: tasks-impl and async-tasks-impl (7/16 and 9/16, track lrocloud_20260909)
+
+Created:
+- tasks/__init__.py — extra guard naming 'tasks'
+- tasks/_queue.py — _QueueBase, CloudTasksQueue, AsyncCloudTasksQueue
+
+Modified:
+- packages/lro/pyproject.toml — tasks extra
+- pyproject.toml — dev group
+
+Green: 199 in packages/lro, 829 across the workspace, ruff clean, mypy strict
+clean over 105 files.
+
+Both impl todos land together, matching their tests: the two queues share
+_QueueBase._request, which is what makes
+test_request_shape_matches_the_sync_queue meaningful. Splitting them would have
+meant two copies of the request builder and no guarantee they agreed.
+
+ALREADY_EXISTS is caught and swallowed rather than retried or raised — it means
+an earlier attempt reached Cloud Tasks and only its response was lost, so the
+callback is already scheduled.
+
+A dead 'type: ignore[override]' was removed from a test fake before commit;
+mypy strict flags unused ignores.
