@@ -1,0 +1,20 @@
+Task: async-impl (26/30, track lrocore_20260909)
+
+Created:
+- _async.py — AsyncClient, AsyncOperation, AsyncResumeHandler
+
+Modified:
+- __init__.py — exports
+
+Green: 157 in packages/lro, ruff clean, mypy strict clean over 99 files. The
+dir()-based parity tests pass, so the two surfaces match method for method.
+
+Two cleanups before commit:
+1. from_env was built with cls.__new__ plus manual slot assignment, duplicating
+   __init__ and silently skipping any field added later. It now builds the
+   config and goes through __init__.
+2. A function-local import of HandlerNotFoundError was hoisted to module scope.
+
+Local resume schedules an asyncio.Task rather than a threading.Timer, held in a
+set until done so the loop cannot collect a pending resume — the async
+counterpart of the timer set on the sync client.
