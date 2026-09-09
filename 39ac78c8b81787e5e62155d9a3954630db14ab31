@@ -1,0 +1,19 @@
+Complexity gate added after a /code-complexity review of packages/.
+
+Measured with ruff 0.16.4 over 418 source functions: median cyclomatic 1, p95 5,
+max 14; deepest nesting 3. One function passes McCabe's 10.
+
+The three exemptions, each carrying its reason in the source:
+- alog _entry.py build_entry (cyc 14, 13 branches) — one single-line guard per
+  optional entry key, nothing nested past two. The score counts how many keys
+  the Cloud Logging format has.
+- iam authn/_base.py __init__ (12 args) — keyword-only OIDC configuration,
+  nine of twelve defaulted, nothing positional.
+- iam authn/_protocol.py build_token_request (7 args) — the union of fields the
+  supported grant types need.
+
+No diff-gating was necessary because the whole repo passes at these thresholds.
+
+Verified the gate bites rather than merely being configured: a synthetic 5-deep
+nest trips PLR1702 (5 > 4). Verified explicit-preview-rules is load-bearing:
+without it, ruff check reports 69 further errors.
