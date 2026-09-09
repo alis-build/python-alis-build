@@ -47,6 +47,7 @@ class _Resumer(Protocol):
     def handler_for(self, path: str) -> object: ...
     def is_local(self) -> bool: ...
     def schedule_local(self, path: str, name: str, delay: float) -> None: ...
+    def schedule_task(self, path: str, name: str, delay: float) -> None: ...
 
 
 class Operation:
@@ -188,10 +189,7 @@ class Operation:
         if self._client.is_local():
             self._client.schedule_local(path, self.name, seconds)
             return
-        raise LroError(
-            f"no task queue is configured, so operation {self.name} cannot be resumed "
-            f"through Cloud Tasks; set Config.local=True to resume in process"
-        )
+        self._client.schedule_task(path, self.name, seconds)
 
     def save(self) -> None:
         """Writes the current row."""

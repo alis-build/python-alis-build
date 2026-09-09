@@ -28,6 +28,8 @@ dependencies = ["googleapis-common-protos>=1.60", "protobuf>=4.25"]
 
 [project.optional-dependencies]
 grpc = ["grpcio>=1.60"]
+spanner = ["google-cloud-spanner>=3.47"]
+tasks = ["google-cloud-tasks>=2.16"]
 
 [project.urls]
 Homepage = "https://alisx.com/build"

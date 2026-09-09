@@ -15,8 +15,8 @@ import asyncio
 import logging
 import threading
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import timedelta
-from typing import Any, TypeVar
+from datetime import UTC, datetime, timedelta
+from typing import Any, Protocol, TypeVar
 
 from google.longrunning import operations_pb2
 from google.protobuf.message import Message
@@ -27,7 +27,7 @@ from ._errors import HandlerError, HandlerNotFoundError, LroError
 from ._operation import Operation, OperationRecord
 from ._store import TASK_DEADLINE, OperationStore
 
-__all__ = ["AsyncClient", "AsyncOperation", "AsyncResumeHandler"]
+__all__ = ["AsyncClient", "AsyncOperation", "AsyncResumeHandler", "AsyncTaskQueue"]
 
 _log = logging.getLogger(__name__.rsplit(".", 1)[0])
 
@@ -35,6 +35,13 @@ M = TypeVar("M", bound=Message)
 T = TypeVar("T")
 
 AsyncResumeHandler = Callable[["AsyncOperation"], Awaitable[None]]
+
+
+class AsyncTaskQueue(Protocol):
+    """The part of an async Cloud Tasks queue a client needs."""
+
+    async def schedule(self, url: str, *, when: datetime) -> None: ...
+    async def close(self) -> None: ...
 
 
 class AsyncOperation:
@@ -129,10 +136,7 @@ class AsyncOperation:
         if self._client.is_local():
             self._client.schedule_local(path, self.name, seconds)
             return
-        raise LroError(
-            f"no task queue is configured, so operation {self.name} cannot be resumed "
-            f"through Cloud Tasks; set Config.local=True to resume in process"
-        )
+        await self._client.schedule_task(path, self.name, seconds)
 
 
 class AsyncClient:
@@ -143,18 +147,37 @@ class AsyncClient:
         store: Where operations are persisted.
     """
 
-    __slots__ = ("_handlers", "_lock", "_sync", "_tasks")
+    __slots__ = ("_handlers", "_lock", "_queue", "_sync", "_tasks")
 
-    def __init__(self, config: Config, *, store: OperationStore) -> None:
-        self._sync = Client(config, store=store)
+    def __init__(
+        self,
+        config: Config,
+        *,
+        store: OperationStore | None = None,
+        queue: AsyncTaskQueue | None = None,
+    ) -> None:
+        # The sync client owns config, store and the local-resume decision. Only
+        # the queue differs, because Cloud Tasks has a real async client.
+        self._sync = Client(config, store=store, queue=_SyncQueueShim(queue) if queue else None)
+        self._queue = queue
         self._handlers: dict[str, AsyncResumeHandler] = {}
         self._lock = threading.Lock()
         # Held so a scheduled resume is not garbage collected mid-flight.
         self._tasks: set[asyncio.Task[None]] = set()
 
+    @property
+    def queue(self) -> AsyncTaskQueue | None:
+        """The task queue resumes are scheduled on, when there is one."""
+        return self._queue
+
     @classmethod
     def from_env(
-        cls, neuron: str, *, store: OperationStore, host: str | None = None
+        cls,
+        neuron: str,
+        *,
+        store: OperationStore | None = None,
+        queue: AsyncTaskQueue | None = None,
+        host: str | None = None,
     ) -> AsyncClient:
         """Builds a client from the ALIS-managed environment variables.
 
@@ -166,7 +189,7 @@ class AsyncClient:
         Raises:
             ConfigError: A required environment variable is unset.
         """
-        return cls(config_from_env(neuron, host=host), store=store)
+        return cls(config_from_env(neuron, host=host), store=store, queue=queue)
 
     @property
     def config(self) -> Config:
@@ -260,18 +283,64 @@ class AsyncClient:
             await self._fail_unless_already_done(name, exc)
             raise HandlerError(f"resumable handler {path!r} failed for {name}") from exc
 
-    async def _fail_unless_already_done(self, name: str, exc: BaseException) -> None:
+    async def _fail_unless_already_done(
+        self, name: str, exc: BaseException, *, reason: str | None = None
+    ) -> None:
         """Records the exception on the operation, unless it already finished."""
         try:
             operation = await self.get_operation(name)
             if operation.pb.done:
                 return
-            await operation.fail(f"{type(exc).__name__}: {exc}")
+            await operation.fail(reason or f"{type(exc).__name__}: {exc}")
         except Exception:
             _log.exception("could not record the failure of %s", name)
 
+    async def schedule_task(self, path: str, name: str, delay: float) -> None:
+        """Schedules a resume through Cloud Tasks.
+
+        Raises:
+            LroError: No queue is configured, or scheduling failed. A failure
+                marks the operation failed before it propagates.
+        """
+        if self._queue is None:
+            raise LroError(
+                f"no task queue is configured, so operation {name} cannot be resumed "
+                f"through Cloud Tasks; set Config.local=True to resume in process"
+            )
+        config = self._sync.config
+        url = f"{config.host}{config.callback_prefix}{path}?operation={name}"
+        when = datetime.now(UTC) + timedelta(seconds=delay)
+        try:
+            await self._queue.schedule(url, when=when)
+        except Exception as exc:
+            _log.exception("scheduling a resume of %s via %r failed", name, path)
+            await self._fail_unless_already_done(name, exc, reason=f"scheduling cloudtask: {exc}")
+            raise LroError(f"scheduling a resume of {name} via {path!r} failed") from exc
+
     async def close(self) -> None:
-        """Releases anything the client holds and cancels pending local resumes."""
+        """Releases both backends and cancels pending local resumes."""
         for task in list(self._tasks):
             task.cancel()
         await asyncio.to_thread(self._sync.close)
+        if self._queue is not None:
+            await self._queue.close()
+
+
+class _SyncQueueShim:
+    """Satisfies the sync client's queue slot without ever being scheduled on.
+
+    AsyncClient owns the real async queue. The sync client only needs something
+    non-None so its own cloud branch is reachable, and something closeable; the
+    async client closes the real queue itself.
+    """
+
+    __slots__ = ("_queue",)
+
+    def __init__(self, queue: AsyncTaskQueue) -> None:
+        self._queue = queue
+
+    def schedule(self, url: str, *, when: datetime) -> None:
+        raise LroError("async clients schedule through AsyncClient.schedule_task")
+
+    def close(self) -> None:
+        return None

@@ -19,14 +19,15 @@ pip install alis-build-lro
 | --- | --- |
 | `alis-build-lro` | Operations, handlers, private state, storage seam, local resume, ASGI route |
 | `alis-build-lro[grpc]` | The `google.longrunning.Operations` servicer |
+| `alis-build-lro[spanner]` | Persistence in the neuron's operations table |
+| `alis-build-lro[tasks]` | Resuming through Cloud Tasks |
+
+A deployed service wants all three: `pip install 'alis-build-lro[grpc,spanner,tasks]'`.
 
 Unlike the other packages in this monorepo, the core is not dependency-free: it
 carries `googleapis-common-protos` and `protobuf`, because
 `google.longrunning.Operation` is a protobuf message and a core that could not
 name it would be a strange thing to install. Both are pure Python.
-
-Persistence and Cloud Tasks scheduling arrive in a following release. Until
-then a client takes an explicit store and resumes in process.
 
 ## The shape of it
 
@@ -87,6 +88,122 @@ Task. `Config.local` decides:
 The default means a config you build by hand behaves the way a deployed one
 does, without you having to think about it. Setting it explicitly takes the
 environment out of the picture, which is what tests want.
+
+## Backends
+
+`Client(config)` connects to both: a Spanner store and a Cloud Tasks queue built
+from the config. Pass your own to avoid that:
+
+```python
+client = Client(config, store=InMemoryStore())  # no cloud at all
+client = Client(config, store=my_store, queue=my_queue)
+```
+
+Defaulting is all or nothing. Supplying any backend means you are saying which
+ones you want, so a test that passes an in-memory store does not then try to
+open a Cloud Tasks connection it has no credentials for.
+
+## Infrastructure contract
+
+**The table must exist before the client is built**, and its name is derived,
+never configured:
+
+```
+${replace(project, "-", "_")}_${replace(neuron, "-", "_")}_Operations
+```
+
+For project `my-project` and neuron `launchpad-v1` that is
+`my_project_launchpad_v1_Operations`. The commonest way to get this wrong is a
+neuron name that differs from the deployed service name.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `key` | `STRING` | Primary key, computed and stored from `Operation.name` |
+| `Operation` | `PROTO<google.longrunning.Operation>` | Required |
+| `State` | `BYTES` | Nullable. The private state, JSON-encoded |
+| `ResumePoint` | `STRING` | Nullable |
+| `UpdateTime` | `TIMESTAMP` | Required. Carries the TTL policy |
+
+Also required: a Cloud Tasks queue named `{neuron}-operations`, and a callback
+host the queue can reach — the `Host` in the config, or the Cloud Run URL
+`NewFromEnv` infers.
+
+For a service following the ALIS module layout, keep these in
+`infra/modules/alis.lro.v2/` and wire the module from `infra/main.tf`:
+
+```hcl
+locals {
+  project = replace(var.alis_os_project, "-", "_")
+  neuron  = replace(var.neuron, "-", "_")
+}
+
+resource "alis_google_spanner_table" "operations" {
+  project         = var.alis_managed_spanner_project
+  instance        = var.alis_managed_spanner_instance
+  database        = var.alis_managed_spanner_db
+  name            = "${local.project}_${local.neuron}_Operations"
+  prevent_destroy = true
+
+  schema = {
+    columns = [
+      {
+        name            = "key"
+        is_computed     = true
+        computation_ddl = "Operation.name"
+        is_stored       = true
+        type            = "STRING"
+        is_primary_key  = true
+        required        = true
+        unique          = true
+      },
+      {
+        name          = "Operation"
+        type          = "PROTO"
+        proto_package = "google.longrunning.Operation"
+        required      = true
+      },
+      { name = "State", type = "BYTES", required = false },
+      { name = "ResumePoint", type = "STRING", required = false },
+      { name = "UpdateTime", type = "TIMESTAMP", required = true },
+    ]
+  }
+}
+
+resource "alis_google_spanner_table_ttl_policy" "operations" {
+  project  = alis_google_spanner_table.operations.project
+  instance = alis_google_spanner_table.operations.instance
+  database = alis_google_spanner_table.operations.database
+  table    = alis_google_spanner_table.operations.name
+  column   = "UpdateTime"
+  ttl      = 90
+}
+```
+
+The TTL is what eventually clears finished operations. An operation that never
+completes is removed by it too, which is why a handler failure marks the
+operation failed rather than leaving it to expire silently.
+
+### Environment
+
+`Client.from_env(neuron)` reads these:
+
+| Variable | Becomes |
+| --- | --- |
+| `ALIS_OS_PROJECT` | `project` and `cloud_tasks_project` |
+| `ALIS_REGION` | The Cloud Tasks location, after fallback resolution |
+| `ALIS_PROJECT_NR` | Part of the inferred Cloud Run host |
+| `ALIS_MANAGED_SPANNER_PROJECT` | `spanner_project` |
+| `ALIS_MANAGED_SPANNER_INSTANCE` | `spanner_instance` |
+| `ALIS_MANAGED_SPANNER_DB` | `spanner_database` |
+
+Derived rather than read: the queue is `{neuron}-operations`, the service
+account is `alis-build@{project}.iam.gserviceaccount.com`, and the host is
+`https://{neuron}-{ALIS_PROJECT_NR}.{ALIS_REGION}.run.app`.
+
+**Cloud Tasks is not available in every region Cloud Run is.** A neuron deployed
+in `africa-south1` queues in `europe-west1`; its callback host stays on
+`africa-south1`, because that is where it is reachable. An unsupported region
+with no fallback is an error at construction, listing the regions that work.
 
 ## Async
 

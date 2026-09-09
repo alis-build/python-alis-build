@@ -7,12 +7,14 @@ import os
 import threading
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from typing import Protocol
 
 from google.longrunning import operations_pb2
 from google.protobuf.message import Message
 
 from ._config import Config, config_from_env
-from ._errors import HandlerError, HandlerNotFoundError, LroError
+from ._errors import ConfigError, HandlerError, HandlerNotFoundError, LroError
 from ._names import validate_operation_name
 from ._operation import Operation, OperationRecord
 from ._store import TASK_DEADLINE, OperationStore
@@ -22,6 +24,13 @@ __all__ = ["Client", "ResumeHandler"]
 _log = logging.getLogger(__name__.rsplit(".", 1)[0])
 
 ResumeHandler = Callable[[Operation], None]
+
+
+class TaskQueue(Protocol):
+    """The part of a Cloud Tasks queue a client needs."""
+
+    def schedule(self, url: str, *, when: datetime) -> None: ...
+    def close(self) -> None: ...
 
 
 class Client:
@@ -40,25 +49,44 @@ class Client:
         ConfigError: The config is missing a required value.
     """
 
-    __slots__ = ("_config", "_handlers", "_lock", "_store", "_timers")
+    __slots__ = ("_config", "_handlers", "_lock", "_queue", "_store", "_timers")
 
-    def __init__(self, config: Config, *, store: OperationStore) -> None:
+    def __init__(
+        self,
+        config: Config,
+        *,
+        store: OperationStore | None = None,
+        queue: TaskQueue | None = None,
+    ) -> None:
         config.validate()
         self._config = config
-        self._store = store
+        self._store, self._queue = _backends(config, store, queue)
         self._handlers: dict[str, ResumeHandler] = {}
         self._lock = threading.Lock()
         # Timers are held so a pending local resume is not garbage collected,
         # and so close() can cancel work that has not fired yet.
         self._timers: set[threading.Timer] = set()
 
+    @property
+    def queue(self) -> TaskQueue | None:
+        """The task queue resumes are scheduled on, when there is one."""
+        return self._queue
+
     @classmethod
-    def from_env(cls, neuron: str, *, store: OperationStore, host: str | None = None) -> Client:
+    def from_env(
+        cls,
+        neuron: str,
+        *,
+        store: OperationStore | None = None,
+        queue: TaskQueue | None = None,
+        host: str | None = None,
+    ) -> Client:
         """Builds a client from the ALIS-managed environment variables.
 
         Args:
             neuron: The service name. Names the queue and the operations table.
-            store: Where operations are persisted.
+            store: Where operations are persisted. Defaults to Spanner.
+            queue: Where resumes are scheduled. Defaults to Cloud Tasks.
             host: Overrides the inferred callback host.
 
         Returns:
@@ -67,7 +95,7 @@ class Client:
         Raises:
             ConfigError: A required environment variable is unset.
         """
-        return cls(config_from_env(neuron, host=host), store=store)
+        return cls(config_from_env(neuron, host=host), store=store, queue=queue)
 
     @property
     def config(self) -> Config:
@@ -237,7 +265,9 @@ class Client:
             self._fail_unless_already_done(name, exc)
             raise HandlerError(f"resumable handler {path!r} failed for {name}") from exc
 
-    def _fail_unless_already_done(self, name: str, exc: BaseException) -> None:
+    def _fail_unless_already_done(
+        self, name: str, exc: BaseException, *, reason: str | None = None
+    ) -> None:
         """Records the exception on the operation, unless it already finished.
 
         A handler that failed the operation itself gave a better reason than the
@@ -247,21 +277,76 @@ class Client:
             operation = self.get_operation(name)
             if operation.pb.done:
                 return
-            operation.fail(f"{type(exc).__name__}: {exc}")
+            operation.fail(reason or f"{type(exc).__name__}: {exc}")
         except Exception:
             # The operation is unreachable. The log above is all we can offer.
             _log.exception("could not record the failure of %s", name)
 
-    def close(self) -> None:
-        """Releases anything the client holds and cancels pending local resumes.
+    def schedule_task(self, path: str, name: str, delay: float) -> None:
+        """Schedules a resume through Cloud Tasks.
 
-        The Cloud Tasks queue and the Spanner client both need closing, so
-        callers should already be writing this call.
+        Raises:
+            LroError: No queue is configured, or scheduling failed. A failure
+                marks the operation failed before it propagates, because an
+                operation whose callback was never scheduled would otherwise
+                hang until its TTL.
         """
+        if self._queue is None:
+            raise LroError(
+                f"no task queue is configured, so operation {name} cannot be resumed "
+                f"through Cloud Tasks; set Config.local=True to resume in process"
+            )
+        url = f"{self._config.host}{self._config.callback_prefix}{path}?operation={name}"
+        when = datetime.now(UTC) + timedelta(seconds=delay)
+        try:
+            self._queue.schedule(url, when=when)
+        except Exception as exc:
+            _log.exception("scheduling a resume of %s via %r failed", name, path)
+            self._fail_unless_already_done(name, exc, reason=f"scheduling cloudtask: {exc}")
+            raise LroError(f"scheduling a resume of {name} via {path!r} failed") from exc
+
+    def close(self) -> None:
+        """Releases both backends and cancels pending local resumes."""
         with self._lock:
             timers, self._timers = self._timers, set()
         for timer in timers:
             timer.cancel()
-        closer = getattr(self._store, "close", None)
-        if callable(closer):
-            closer()
+        for backend in (self._store, self._queue):
+            closer = getattr(backend, "close", None)
+            if callable(closer):
+                closer()
+
+
+def _backends(
+    config: Config, store: OperationStore | None, queue: TaskQueue | None
+) -> tuple[OperationStore, TaskQueue | None]:
+    """Returns the backends to use, connecting only when none were supplied.
+
+    Defaulting is all or nothing, on purpose. Supplying any backend means you
+    are saying which ones you want, so a test that passes an in-memory store
+    does not then try to open a Cloud Tasks connection and fail for want of
+    credentials. Supply both to run against both.
+
+    The extras are imported lazily and only when defaulting, so a client handed
+    its backends works with neither extra installed.
+    """
+    if store is not None or queue is not None:
+        if store is None:
+            raise ConfigError(
+                "a client given a queue must also be given a store; backend defaults "
+                "are all or nothing, so pass store= as well"
+            )
+        return store, queue
+
+    from .spanner import SpannerStore
+
+    connected = SpannerStore.from_config(config)
+    try:
+        from .tasks import CloudTasksQueue
+
+        return connected, CloudTasksQueue.from_config(config)
+    except Exception:
+        # Match Go's New(): close the database before giving up, or its session
+        # pool leaks for the life of the process.
+        connected.close()
+        raise
