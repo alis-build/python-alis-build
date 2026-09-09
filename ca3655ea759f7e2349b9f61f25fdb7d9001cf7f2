@@ -1,0 +1,23 @@
+Task: wiring-impl (12/16, track lrocloud_20260909)
+
+Modified:
+- _client.py — store widened to optional, queue parameter, TaskQueue protocol,
+  schedule_task, _backends, close() closes both
+- _operation.py — cloud branch now delegates to client.schedule_task
+- _async.py — AsyncTaskQueue protocol, queue parameter, async schedule_task,
+  close() closes the real async queue, _SyncQueueShim
+- tests/test_wiring.py — TestBackendDefaulting added
+
+Green: 215 in packages/lro, 845 across the workspace, ruff clean, mypy strict
+clean over 106 files.
+
+Two things the tests caught rather than review:
+1. A scheduling failure was recording the bare exception message, reusing the
+   handler-failure phrasing. Go says 'scheduling cloudtask: %v' and the
+   distinction is worth keeping.
+2. Backend defaulting was nested such that passing only a store gave no queue —
+   correct behaviour, reached by accident. It is now explicit, and passing only
+   a queue is refused with a message saying why rather than half-connecting.
+
+Widening store from required to optional is additive: everything written against
+the core track still works.
