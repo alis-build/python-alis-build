@@ -1,0 +1,17 @@
+Task: client-tests (15/30, track lrocore_20260909)
+
+Created:
+- packages/lro/tests/conftest.py — make_config factory, store and client fixtures
+- packages/lro/tests/test_client.py — 17 tests over TestConstruction,
+  TestHandlerRegistry, TestOperationCrud
+
+Red verified: ImportError on Client.
+
+conftest exposes make_config as a fixture returning a callable rather than a
+module-level helper. The repo's other tests never cross-import from conftest,
+and pytest runs with --import-mode=importlib here, under which such an import is
+not dependable.
+
+test_new_operation_rejects_a_bad_name_before_touching_the_store asserts the
+absence of a row, not just the raise: validation that happens after the insert
+would leave a junk row behind on every malformed request.
