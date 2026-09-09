@@ -1,0 +1,21 @@
+Task: store-impl (14/30, track lrocore_20260909)
+
+Created:
+- _store.py — OperationStore protocol, TASK_DEADLINE (30 minutes)
+- testing.py — InMemoryStore
+
+Modified:
+- _errors.py — OperationNotFoundError
+- __init__.py — exports
+
+Green: 87 passed, ruff clean, mypy strict clean over 87 files. The ruff I001
+noted on the previous commit cleared once testing.py existed on disk, confirming
+the diagnosis.
+
+TASK_DEADLINE lives in the core rather than in the Cloud Tasks queue because
+both resume paths are bounded by it: Cloud Tasks enforces it as the dispatch
+deadline, and the local timer uses the same value so a handler cannot be allowed
+more time locally than in production.
+
+update_time is timezone-aware UTC. A naive timestamp would compare wrongly
+against a Spanner TIMESTAMP at the first daylight-saving boundary.
