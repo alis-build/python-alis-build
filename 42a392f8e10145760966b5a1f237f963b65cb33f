@@ -1,0 +1,17 @@
+Task: grpc-impl (23/30, track lrocore_20260909)
+
+Created:
+- _optional.py — missing_dependency, same shape as iam's
+- grpc/__init__.py — extra guard, raises MissingDependencyError naming 'grpc'
+- grpc/_server.py — OperationsServicer, register_grpc
+
+Green: 141 in packages/lro, ruff clean, mypy strict clean over 97 files.
+
+Two things worth knowing:
+1. The servicer subclasses the generated OperationsServicer, which is Any to
+   mypy, so strict mode rejects the subclass. The ignore is targeted and
+   commented rather than broad: subclassing is genuinely required, because
+   add_OperationsServicer_to_server reads ListOperations, CancelOperation and
+   DeleteOperation off the servicer. Verified they are inherited.
+2. WaitOperation sleeps min(delay, time left) rather than the full delay, so it
+   cannot overshoot the deadline by up to max_poll_delay on its last iteration.
