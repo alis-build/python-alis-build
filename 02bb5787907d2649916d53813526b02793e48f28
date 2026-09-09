@@ -1,0 +1,18 @@
+Task: spanner-tests (3/16, track lrocloud_20260909)
+
+Created packages/lro/tests/test_spanner.py — 17 tests over TestTableName,
+TestRoundTrip, TestContract, TestRetries, TestLifecycle.
+
+Red verified: ModuleNotFoundError on alis.build.lro.spanner.
+
+Three assertions exist because the fake cannot prove them by round-tripping:
+- the table name, which if wrong silently targets a table that does not exist
+- the column order, which is the contract Go services already write against
+- that column_info is passed on every read, per the spike's finding
+
+test_insert_uses_insert_and_update_uses_update guards a substitution that would
+otherwise pass every other test here: update() on a missing row is a silent
+no-op in Spanner, not an error.
+
+Correction before commit: the retry test asserted 3 reads. insert() does not
+read, so the count is 2 — one attempt that raised, one that succeeded.
