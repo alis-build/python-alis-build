@@ -17,3 +17,17 @@ Modified:
 Why: the core dependency is the one decision here that breaks a repo-wide
 principle (product.md principle 1), so it was recorded in tech-stack.md before
 this commit rather than after.
+
+--- Phase checkpoint: P1 Foundation ---
+
+Automated: make check -> ruff clean, ruff format clean, taplo clean,
+mypy strict 'no issues found in 76 source files', pytest 631 passed.
+
+Manual verification proposed and confirmed by the user:
+1. alis.build.lro imports, __version__ 0.1.0, Requires: googleapis-common-protos, protobuf
+2. alog, iam and lro coexist under the PEP 420 namespace
+3. Reviewed the dependency deviation in tech-stack.md and the amended
+   principle 1 in product.md
+4. Reviewed this commit
+
+User response: approved, checkpoint and continue.
