@@ -22,3 +22,17 @@ under-typed — so untyped_calls_exclude names the two packages instead. That is
 narrower than relaxing disallow_untyped_calls for our own modules.
 
 The 'spanner-tests' note said 17 tests; there are 15.
+
+--- Phase checkpoint: Q1 Spanner store ---
+
+Automated: make check -> ruff, taplo, mypy strict clean; 802 passed
+(172 in packages/lro).
+
+Manual verification proposed and confirmed by the user:
+1. operations_table('my-project','launchpad-v1') ->
+   my_project_launchpad_v1_Operations, matching docs.go
+2. Proto round trip exact; without column_info the value is bytes, which is
+   what the store now guards against on every read
+3. make check-bare still 3/3 with the second extra declared
+
+User response: approved, checkpoint and continue.
