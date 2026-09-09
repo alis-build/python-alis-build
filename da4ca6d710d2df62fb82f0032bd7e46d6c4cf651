@@ -1,0 +1,21 @@
+Task: operation-impl (9/30, track lrocore_20260909)
+
+Created:
+- _names.py — validate_operation_name
+- _operation.py — OperationRecord, Operation
+
+Modified:
+- _errors.py — OperationNameError
+- __init__.py — exports
+- pyproject.toml — mypy overrides for google.longrunning.* and google.rpc.*
+
+Green: 59 passed in packages/lro, ruff clean, mypy strict clean over 82 files.
+
+Design note: mutators are set_/save_ pairs so a handler that changes three
+fields writes once, not three times. That is the Go package's shape and it
+matters more in Python, where each write is a blocking Spanner call.
+
+An Operation.record property was written and removed before commit — nothing
+tested it. P4 adds it with the resume test that needs the fallback record.
+
+tech-stack.md updated to keep its list of ignored modules accurate.
