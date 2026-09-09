@@ -1,0 +1,14 @@
+Task: state-tests (10/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_state.py — 18 tests over TestEncoding,
+TestDecoding, TestOnOperation.
+
+Red verified: ImportError on StateCodecError, encode_state, decode_state.
+
+Two cases exist specifically because state outlives the code that wrote it:
+unknown field (a deploy removed one) and missing required field (a deploy added
+one). Both must name the field. A third, stable encoding, keeps a re-saved
+unchanged state from churning the Spanner row.
+
+test_state_is_visible_on_the_record drives the Operation.record property that
+was deliberately left out of operation-impl for want of a test.
