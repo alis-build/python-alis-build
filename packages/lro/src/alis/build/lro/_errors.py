@@ -11,6 +11,7 @@ __all__ = [
     "ConfigError",
     "LroError",
     "MissingDependencyError",
+    "OperationNameError",
 ]
 
 
@@ -28,3 +29,7 @@ class MissingDependencyError(LroError, ImportError):
     Also an :class:`ImportError`, so ``except ImportError`` at a call site that
     probes for optional support keeps working.
     """
+
+
+class OperationNameError(LroError):
+    """An operation resource name is missing or malformed."""

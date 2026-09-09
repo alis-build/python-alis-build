@@ -11,7 +11,9 @@ Storage is a seam. Pass any :class:`OperationStore`; the in-memory one in
 from __future__ import annotations
 
 from ._config import Config, config_from_env, resolve_cloud_tasks_location
-from ._errors import ConfigError, LroError, MissingDependencyError
+from ._errors import ConfigError, LroError, MissingDependencyError, OperationNameError
+from ._names import validate_operation_name
+from ._operation import Operation, OperationRecord
 
 __version__ = "0.1.0"
 
@@ -20,7 +22,11 @@ __all__ = [
     "ConfigError",
     "LroError",
     "MissingDependencyError",
+    "Operation",
+    "OperationNameError",
+    "OperationRecord",
     "__version__",
     "config_from_env",
     "resolve_cloud_tasks_location",
+    "validate_operation_name",
 ]

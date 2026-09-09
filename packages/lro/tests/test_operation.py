@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from google.longrunning import operations_pb2
 from google.protobuf.empty_pb2 import Empty
-from google.protobuf.struct_pb2 import Struct
+from google.protobuf.struct_pb2 import Struct, Value
 from google.rpc import code_pb2
 
 from alis.build.lro import (
@@ -64,7 +64,7 @@ class TestOperationName:
 
 class TestMetadata:
     def test_round_trips_through_any(self, operation: Operation) -> None:
-        operation.set_metadata(Struct(fields={"target": {"string_value": "streams/abc"}}))
+        operation.set_metadata(Struct(fields={"target": Value(string_value="streams/abc")}))
         assert operation.unmarshal_metadata(Struct)["target"] == "streams/abc"
 
     def test_set_does_not_persist(self, operation: Operation, store: RecordingStore) -> None:
