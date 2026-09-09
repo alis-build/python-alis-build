@@ -1,0 +1,16 @@
+Task: async-tests (25/30, track lrocore_20260909)
+
+Created packages/lro/tests/test_async.py — 17 tests over TestLifecycle,
+TestResume, TestParity.
+
+Red verified: ImportError on AsyncClient / AsyncOperation.
+
+Correction made before commit: the raising-handler test was first written with a
+meaningless placeholder assertion and an unconditional asyncio.sleep(0.1). Both
+are gone. It now polls the store, which is synchronous, so the predicate stays a
+plain callable and the test has a bound rather than a fixed delay.
+
+TestParity compares dir() of AsyncClient against Client and AsyncOperation
+against Operation. That is a structural test, not a behavioural one, and it is
+there precisely because behavioural tests on one surface say nothing about the
+other.
