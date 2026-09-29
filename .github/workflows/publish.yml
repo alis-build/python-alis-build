@@ -55,12 +55,10 @@ jobs:
           git commit -m "docs(${package}): changelog for ${GITHUB_REF_NAME}"
           git push origin HEAD:${{ github.event.repository.default_branch }}
 
-  publish:
+  # Builds and checks the distributions once, so PyPI and the GitHub release
+  # ship byte-identical files.
+  build:
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      # Required for PyPI Trusted Publishing (OIDC). No API token is stored.
-      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.0.1
@@ -84,4 +82,87 @@ jobs:
       - name: Verify the wheel installs with plain pip
         run: python scripts/check_pip_install.py
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Required for PyPI Trusted Publishing (OIDC). No API token is stored.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # Attaches the same files to a GitHub release, so the package is installable
+  # by URL even when PyPI is unavailable. It does not wait on the PyPI job: a
+  # PyPI failure must not hold back the release, and vice versa.
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # git-cliff needs the whole history to find the previous tag.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+      - name: Write the release notes
+        run: |
+          package="${GITHUB_REF_NAME%/v*}"
+          # --tag plus --latest gives just this release's section. --tag is
+          # needed for the same reason as in the changelog job: without it a
+          # tag on a commit that did not touch the package reads "Unreleased".
+          uv run --with git-cliff git-cliff --config cliff.toml \
+            --include-path "packages/${package}/**" \
+            --tag-pattern "${package}/v[0-9].*" \
+            --tag "${GITHUB_REF_NAME}" \
+            --latest --strip header \
+            --output notes.md
+          wheel=$(basename dist/*.whl)
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${wheel}"
+          cat >> notes.md <<EOF
+
+          ### Install
+
+          \`\`\`sh
+          pip install ${url}
+          \`\`\`
+          EOF
+
+      - name: Create the release, or refresh it on a re-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME##*/v}"
+          # PEP 440 pre-releases (a, b, rc, dev) are flagged so they never
+          # show as the repository's latest release.
+          prerelease=""
+          if echo "${version}" | grep -Eq '(a|b|rc|dev)[0-9]*$'; then
+            prerelease="--prerelease"
+          fi
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+            gh release edit "${GITHUB_REF_NAME}" --notes-file notes.md
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/* \
+              --verify-tag \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file notes.md \
+              ${prerelease}
+          fi
