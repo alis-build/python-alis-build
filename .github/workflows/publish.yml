@@ -126,7 +126,7 @@ jobs:
       # Required for PyPI Trusted Publishing (OIDC). No API token is stored.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -149,7 +149,7 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/${{ env.TAG }}
       - uses: astral-sh/setup-uv@v10.0.1
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
