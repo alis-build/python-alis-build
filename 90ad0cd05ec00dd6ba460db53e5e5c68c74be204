@@ -1,0 +1,6 @@
+Validate and canonicalise seat map keys.
+
+What: _seat_key() accepts an optional sign and ASCII digits within int32, strips leading zeros before converting (so long zero-padded keys never hit the int-string limit), and returns canonical decimal. Invalid keys raise IdentityDecodeError. Differently spelled duplicates: the later one wins.
+Files: iam/_wire.py, tests/test_wire.py.
+Why: other decoders reject non-integer keys and re-encode valid ones canonically; matching both keeps forwarding safe and byte-identical. Every expectation comes from a probe of the reference decoder.
+Checks: make check (963 tests).
