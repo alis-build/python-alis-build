@@ -99,6 +99,48 @@ restricted credential there is into the least restricted one.
 the claim and grants the credential full authority, so an issuer keeps its own
 guards until every consumer has upgraded.
 
+### Active account and credit
+
+A user's token names the one account they are acting under, and carries what
+the accounts service decided about spending credits on it when the token was
+minted. Read the account through `active_account_id()`, which also resolves
+tokens minted before the per-product account claims were consolidated:
+
+```python
+identity.active_account_id()  # 'acme' — never the accounts/ prefix
+```
+
+`credit_standing()` answers "may this work be charged to that account?" from
+the token alone:
+
+```python
+standing = identity.credit_standing("accounts/acme")
+if not standing.known:
+    ...  # the token cannot answer: ask the accounts service
+elif not standing.allowed:
+    raise FailedPrecondition(standing.message)  # safe to show the user
+```
+
+It is unknown whenever the token has no standing, or the account asked about is
+not the active one. An account block outranks the user's own spend block, and
+the user's block ends at `standing.blocked_until`. Pass `now=` to judge it at a
+fixed time.
+
+`credit_validity()` returns the accounts service's verdict on the member, or
+`None` when the token carries none. A `None` is not a yes: it means ask.
+
+```python
+verdict = identity.credit_validity()
+if verdict is not None and not verdict.valid:
+    show(verdict.comments)  # verdict.reason names the case, e.g. NO_BILLING_DETAILS
+```
+
+`is_eap()` reports whether the user opted into the Early Access Program. It
+turns on previews and never grants a permission.
+
+All of these claims survive forwarding: a service that decodes an identity and
+passes it on hands the next service the same verdicts.
+
 ## Carrying it through a request
 
 The identity is ambient, held in a context variable rather than passed down
@@ -229,6 +271,18 @@ same response:
 
 ```python
 start = client.start_login("https://app.example.com/callback", return_to="/dashboard")
+```
+
+To shape the sign-in, pass the OpenID Connect interaction options. Providers
+that do not know them ignore them:
+
+```python
+start = client.start_login(
+    "https://app.example.com/callback",
+    prompt="select_account",  # or "login" to force a fresh sign-in, "consent"
+    max_age=timedelta(minutes=5),  # re-authenticate if signed in longer ago
+    login_hint="jan@example.com",  # pre-fill the email; never trusted as identity
+)
 ```
 
 On the callback route:

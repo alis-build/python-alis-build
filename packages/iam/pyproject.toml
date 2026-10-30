@@ -1,6 +1,6 @@
 [project]
 name = "alis-build-iam"
-version = "0.1.0"
+version = "0.2.0"
 description = "Authentication and authorization for services on the Alis Build platform"
 readme = "README.md"
 license = "Apache-2.0"
