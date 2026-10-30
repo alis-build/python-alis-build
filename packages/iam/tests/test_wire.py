@@ -269,6 +269,20 @@ def test_non_finite_floats_rejected(value: float) -> None:
         dumps(identity)
 
 
+@pytest.mark.parametrize(
+    "account",
+    [
+        pytest.param(ActiveAccount(account_credit_limit=float("nan")), id="account_nan"),
+        pytest.param(ActiveAccount(account_credit_limit=float("inf")), id="account_inf"),
+        pytest.param(ActiveAccount(user_credit_limit=float("nan")), id="user_nan"),
+        pytest.param(ActiveAccount(user_credit_limit=float("-inf")), id="user_neg_inf"),
+    ],
+)
+def test_non_finite_active_account_limits_rejected(account: ActiveAccount) -> None:
+    with pytest.raises(IdentityDecodeError, match="non-finite"):
+        dumps(Identity(active_account=account))
+
+
 def test_unknown_keys_ignored() -> None:
     """Real JWT payloads carry aud, iss and iat; decoding must drop them."""
     identity = loads(

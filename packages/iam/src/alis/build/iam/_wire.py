@@ -233,8 +233,11 @@ def _string_list(values: list[str] | None) -> str:
 def dumps(identity: Identity, /) -> bytes:
     """Serialises an identity to the exact bytes the wire format requires.
 
-    Field order is fixed and every field is always present -- nothing is
-    omitted when empty. Note the first key is ``"Type"`` with a capital T while
+    Field order is fixed and every top-level key is always present -- nothing
+    at that level is omitted when empty. Inside ``active_account`` the format
+    is different: the optional standing, member block and validity verdict are
+    left out when absent, and empty strings, false and zero are left out of the
+    nested objects. Note the first key is ``"Type"`` with a capital T while
     every other key is lowercase; that inconsistency is part of the format.
 
     Args:
