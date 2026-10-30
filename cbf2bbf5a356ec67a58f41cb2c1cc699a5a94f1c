@@ -1,0 +1,6 @@
+Add Identity.credit_validity() and Validity.
+
+What: None when there is no active account or no verdict (a standing alone is not one); otherwise Validity(valid, reason, comments).
+Files: iam/_identity.py, iam/__init__.py, tests/test_identity.py.
+Why: lets callers decide from the token and fall back to AllowTransaction only when it has no answer.
+Checks: make check (913 tests); reference table ported including forwarding of a false verdict. Reviewed in the phase verification rather than separately.
