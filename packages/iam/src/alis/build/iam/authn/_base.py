@@ -160,7 +160,7 @@ class BaseAuthnClient:
 
     # -- no I/O ------------------------------------------------------------
 
-    def authorize_url(
+    def authorize_url(  # noqa: PLR0913 - keyword-only, one per query parameter
         self,
         redirect_uri: str,
         state: str,
@@ -168,8 +168,14 @@ class BaseAuthnClient:
         *,
         nonce: str = "",
         extra_params: Mapping[str, str] | None = None,
+        prompt: str | Sequence[str] | None = None,
+        max_age: timedelta | None = None,
+        login_hint: str = "",
     ) -> str:
-        """Builds the URL to send a user to in order to sign in."""
+        """Builds the URL to send a user to in order to sign in.
+
+        The sign-in options are described on :func:`build_authorize_url`.
+        """
         return build_authorize_url(
             self._authorize_url,
             redirect_uri,
@@ -177,10 +183,22 @@ class BaseAuthnClient:
             client_id=self._client_id,
             nonce=nonce,
             extra_params=extra_params,
+            prompt=prompt,
+            max_age=max_age,
+            login_hint=login_hint,
         )
 
-    def start_login(
-        self, redirect_uri: str, /, *, return_to: str = "", secure: bool = True
+    def start_login(  # noqa: PLR0913 - keyword-only, one per query parameter
+        self,
+        redirect_uri: str,
+        /,
+        *,
+        return_to: str = "",
+        secure: bool = True,
+        prompt: str | Sequence[str] | None = None,
+        max_age: timedelta | None = None,
+        login_hint: str = "",
+        extra_params: Mapping[str, str] | None = None,
     ) -> LoginStart:
         """Begins a login.
 
@@ -193,6 +211,16 @@ class BaseAuthnClient:
             return_to: Where to send the user once the login finishes.
             secure: Whether the cookie should be restricted to HTTPS. Leave it
                 on unless you are serving plain HTTP locally.
+            prompt: ``"login"``, ``"select_account"`` or ``"consent"``, or
+                several of them. See :func:`build_authorize_url`.
+            max_age: Re-authenticate the user if they last signed in longer
+                ago than this.
+            login_hint: The email the identity provider should pre-fill.
+            extra_params: Any further query parameters for the authorize URL.
+
+        Raises:
+            ValueError: If ``max_age`` is negative, or a sign-in option is also
+                given in ``extra_params``.
         """
         state = generate_state()
         nonce = generate_nonce()
@@ -203,7 +231,15 @@ class BaseAuthnClient:
             expires_at=datetime.now(tz=UTC) + LOGIN_TRANSACTION_TTL,
         )
         return LoginStart(
-            url=self.authorize_url(redirect_uri, state, nonce=nonce),
+            url=self.authorize_url(
+                redirect_uri,
+                state,
+                nonce=nonce,
+                extra_params=extra_params,
+                prompt=prompt,
+                max_age=max_age,
+                login_hint=login_hint,
+            ),
             state=state,
             nonce=nonce,
             return_to=return_to,
