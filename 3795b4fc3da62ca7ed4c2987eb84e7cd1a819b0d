@@ -1,0 +1,13 @@
+Track verification: active account, credit standing, EAP and sign-in options.
+
+This commit: start_login rejects extra_params naming state, nonce or
+redirect_uri (they would diverge from the login cookie); max_age uses exact
+integer division.
+
+Tests: make check -> ruff, taplo, mypy clean; 934 passed. make check-bare ok;
+make check-pip ok (all wheels import under plain pip).
+Agent-run: start_login URL carries prompt, max_age and login_hint; all six
+captured reference fixtures forward byte-identical.
+Final verifier (whole track vs AC1-AC8): Approve, all eight pass. Its one
+should-fix (generated values replaceable via extra_params) is this commit.
+Hand check: none needed; library. Not tagged; release tag is the user's call.
