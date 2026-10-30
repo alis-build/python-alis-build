@@ -1,0 +1,16 @@
+Decode the eap and active_account identity claims.
+
+What: loads() and from_unverified_jwt() now read eap and active_account
+(standing, member block, validity). valid keeps absent/null (None), false and
+true apart via a new _optional_bool helper. Wrong JSON types raise
+IdentityDecodeError like every other field.
+
+Files: iam/_wire.py, tests/test_wire.py.
+
+Why: decode ignored the claims, so loads-then-dumps dropped them and every
+downstream service lost the credit verdict and EAP flag. The forwarding test
+round-trips all five captured fixtures byte for byte.
+
+Checks: make check (869 tests); independent review approved. Noted, not
+changed: nanos/seconds are not range-checked to int32/int64, same as the
+existing seat fields.
