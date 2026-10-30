@@ -1,0 +1,6 @@
+Add Identity.active_account_id().
+
+What: returns the bare account id from active_account, else active_build_account, else active_ideate_account, skipping empty ids; strips accounts/.
+Files: iam/_identity.py, tests/test_identity.py.
+Why: one accessor works across tokens minted before and after the issuer consolidated the per-product claims; credit_standing builds on it.
+Checks: make check green.
