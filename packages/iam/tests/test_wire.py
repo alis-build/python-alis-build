@@ -301,6 +301,7 @@ def test_unknown_keys_ignored() -> None:
         pytest.param('{"groups":[1]}', id="groups_non_string"),
         pytest.param('{"accounts":[]}', id="accounts_list"),
         pytest.param('{"eap":"yes"}', id="eap_string"),
+        pytest.param('{"eap":1}', id="eap_int"),
         pytest.param('{"active_account":[]}', id="active_account_list"),
         pytest.param('{"active_account":{"valid":1}}', id="valid_int"),
         pytest.param('{"active_account":{"user_credit_limit":"1"}}', id="user_limit_string"),

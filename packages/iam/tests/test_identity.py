@@ -210,6 +210,7 @@ def test_restricted_system_is_not_privileged() -> None:
         pytest.param(Identity(eap=True), True, id="opted_in"),
         pytest.param(loads('{"eap":true}'), True, id="decoded"),
         pytest.param(loads("{}"), False, id="claim_absent"),
+        pytest.param(loads('{"eap":false}'), False, id="opted_out"),
     ],
 )
 def test_is_eap(identity: Identity, expected: bool) -> None:
@@ -424,6 +425,19 @@ def test_credit_standing_judges_the_block_at_the_given_time() -> None:
     )
     assert identity.credit_standing("acme", NOW).allowed is False
     assert identity.credit_standing("acme", datetime(2026, 10, 17, tzinfo=UTC)).allowed is True
+
+
+def test_member_block_ends_at_its_timestamp() -> None:
+    """The block applies only while its end lies after `now`, so at that instant it has lapsed."""
+    identity = _with_active(
+        {
+            "account_id": "acme",
+            "account_standing": {"allow": True},
+            "member_blocked_until": {"seconds": A_DAY_AFTER_NOW_SECONDS},
+        }
+    )
+    end = datetime(2026, 10, 16, 12, tzinfo=UTC)
+    assert identity.credit_standing("acme", end) == CreditStanding(known=True, allowed=True)
 
 
 def test_member_credit_limit_reason_value() -> None:
