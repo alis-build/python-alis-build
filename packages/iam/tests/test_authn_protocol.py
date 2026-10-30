@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -65,6 +66,64 @@ def test_authorize_url_accepts_extra_params() -> None:
         "https://a/authorize", "https://app/cb", "st8", extra_params={"scope": "openid email"}
     )
     assert "scope=openid+email" in url
+
+
+def test_authorize_url_sign_in_options() -> None:
+    url = build_authorize_url(
+        "https://a/authorize",
+        "https://app/cb",
+        "st8",
+        prompt=["login", "consent"],
+        max_age=timedelta(minutes=5),
+        login_hint="jan@example.com",
+    )
+    assert url == (
+        "https://a/authorize?login_hint=jan%40example.com&max_age=300"
+        "&prompt=login+consent&redirect_uri=https%3A%2F%2Fapp%2Fcb&state=st8"
+    )
+
+
+def test_prompt_string_is_one_value() -> None:
+    """A plain string must not be split into one prompt value per character."""
+    url = build_authorize_url("https://a/authorize", "r", "s", prompt="select_account")
+    assert url == "https://a/authorize?prompt=select_account&redirect_uri=r&state=s"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param({"prompt": []}, id="empty_prompt_list"),
+        pytest.param({"prompt": ""}, id="empty_prompt_string"),
+        pytest.param({"login_hint": ""}, id="empty_login_hint"),
+        pytest.param({"max_age": None}, id="no_max_age"),
+    ],
+)
+def test_empty_options_are_omitted(kwargs: dict[str, Any]) -> None:
+    url = build_authorize_url("https://a/authorize", "r", "s", **kwargs)
+    assert url == "https://a/authorize?redirect_uri=r&state=s"
+
+
+def test_max_age_truncates_to_whole_seconds() -> None:
+    url = build_authorize_url("https://a/authorize", "r", "s", max_age=timedelta(seconds=1.9))
+    assert url == "https://a/authorize?max_age=1&redirect_uri=r&state=s"
+
+
+def test_max_age_zero_is_sent() -> None:
+    """Zero asks for a fresh sign-in, so it is a value, not an absence."""
+    url = build_authorize_url("https://a/authorize", "r", "s", max_age=timedelta(0))
+    assert url == "https://a/authorize?max_age=0&redirect_uri=r&state=s"
+
+
+def test_negative_max_age_rejected() -> None:
+    with pytest.raises(ValueError, match="max_age"):
+        build_authorize_url("https://a/authorize", "r", "s", max_age=timedelta(seconds=-1))
+
+
+def test_option_clashing_with_extra_params_rejected() -> None:
+    with pytest.raises(ValueError, match="prompt"):
+        build_authorize_url(
+            "https://a/authorize", "r", "s", prompt="login", extra_params={"prompt": "none"}
+        )
 
 
 # -- token requests --------------------------------------------------------
@@ -245,3 +304,8 @@ def test_tokens_merge_preserves_an_unrotated_refresh_token() -> None:
     assert (
         existing.merged_with(Tokens(access_token="new", refresh_token="rt2")).refresh_token == "rt2"
     )
+
+
+def test_max_age_truncation_is_exact_for_large_values() -> None:
+    url = build_authorize_url("https://a/authorize", "r", "s", max_age=timedelta.max)
+    assert "max_age=86399999999999&" in url

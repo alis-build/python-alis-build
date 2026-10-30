@@ -239,3 +239,53 @@ def test_the_full_round_trip(client: Any) -> None:
     start = client.start_login(REDIRECT, return_to="/dashboard")
     result = complete(client, start)
     client.validate_id_token_nonce(id_token_with(nonce=result.nonce), result.nonce)
+
+
+def _query(url: str) -> dict[str, list[str]]:
+    return parse_qs(urlparse(url).query)
+
+
+def test_start_login_passes_sign_in_options(client: Any) -> None:
+    url = client.start_login(
+        REDIRECT,
+        prompt="select_account",
+        max_age=timedelta(minutes=5),
+        login_hint="jan@example.com",
+    ).url
+    query = _query(url)
+    assert query["prompt"] == ["select_account"]
+    assert query["max_age"] == ["300"]
+    assert query["login_hint"] == ["jan@example.com"]
+
+
+def test_start_login_passes_extra_params(client: Any) -> None:
+    assert _query(client.start_login(REDIRECT, extra_params={"scope": "openid"}).url)["scope"] == [
+        "openid"
+    ]
+
+
+def test_start_login_without_options_is_unchanged(client: Any) -> None:
+    assert set(_query(client.start_login(REDIRECT).url)) <= {
+        "client_id",
+        "nonce",
+        "redirect_uri",
+        "state",
+    }
+
+
+def test_client_authorize_url_passes_options(client: Any) -> None:
+    url = client.authorize_url(REDIRECT, "st8", login_hint="x@y.com")
+    assert _query(url)["login_hint"] == ["x@y.com"]
+
+
+@pytest.mark.parametrize("key", ["state", "nonce", "redirect_uri"])
+def test_start_login_rejects_extra_params_that_replace_generated_values(
+    client: Any, key: str
+) -> None:
+    """The URL must carry the same state and nonce the login cookie records.
+
+    Otherwise the callback rejects the login with a mismatch the caller cannot
+    trace back to this call.
+    """
+    with pytest.raises(ValueError, match=key):
+        client.start_login(REDIRECT, extra_params={key: "x"})
