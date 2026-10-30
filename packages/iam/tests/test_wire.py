@@ -286,6 +286,14 @@ def test_unknown_keys_ignored() -> None:
         pytest.param('{"groups":"a"}', id="groups_string"),
         pytest.param('{"groups":[1]}', id="groups_non_string"),
         pytest.param('{"accounts":[]}', id="accounts_list"),
+        pytest.param('{"eap":"yes"}', id="eap_string"),
+        pytest.param('{"active_account":[]}', id="active_account_list"),
+        pytest.param('{"active_account":{"valid":1}}', id="valid_int"),
+        pytest.param('{"active_account":{"user_credit_limit":"1"}}', id="user_limit_string"),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"seconds":"1"}}}', id="seconds_string"
+        ),
+        pytest.param('{"active_account":{"account_standing":{"allow":"true"}}}', id="allow_string"),
         pytest.param("[]", id="not_an_object"),
         pytest.param("{", id="not_json"),
     ],
@@ -476,3 +484,64 @@ def test_a_token_minted_before_these_claims_is_unrestricted() -> None:
     identity = loads(json.dumps({"sub": "1", "email": "a@example.com"}))
     assert identity.authz_roles is None
     assert identity.restricted is False
+
+
+# -- active account and EAP claims ------------------------------------------
+
+
+@pytest.mark.parametrize("key", list(GO_ACTIVE_ACCOUNT_FIXTURES))
+def test_forwarding_keeps_active_account(key: str) -> None:
+    """A service that decodes and re-encodes an identity must not drop the claims.
+
+    Losing them would strip the credit verdict and the EAP flag from every
+    service downstream of this one.
+    """
+    line = GO_ACTIVE_ACCOUNT_FIXTURES[key]
+    assert dumps(loads(line)).decode() == line
+
+
+@pytest.mark.parametrize(
+    ("claim", "expected"),
+    [
+        pytest.param({"account_id": "a"}, None, id="absent"),
+        pytest.param({"account_id": "a", "valid": None}, None, id="null"),
+        pytest.param({"account_id": "a", "valid": False}, False, id="false"),
+        pytest.param({"account_id": "a", "valid": True}, True, id="true"),
+    ],
+)
+def test_valid_is_tri_state(claim: dict[str, object], expected: bool | None) -> None:
+    """No verdict and a negative verdict are different answers."""
+    active = loads(json.dumps({"active_account": claim})).active_account
+    assert active is not None
+    assert active.valid is expected
+
+
+@pytest.mark.parametrize(
+    ("claim", "expected"),
+    [
+        pytest.param({}, False, id="absent"),
+        pytest.param({"eap": True}, True, id="true"),
+    ],
+)
+def test_eap_decoding(claim: dict[str, object], expected: bool) -> None:
+    assert loads(json.dumps(claim)).eap is expected
+
+
+def test_active_account_decoding_reads_every_field() -> None:
+    identity = loads(GO_ACTIVE_ACCOUNT_FIXTURES["full"])
+    assert identity.active_account == ActiveAccount(
+        account_id="acme",
+        account_credit_limit=1500.5,
+        user_credit_limit=250,
+        account_standing=AccountStanding(allow=True),
+        member_blocked_until=ClaimTime(seconds=1793491200, nanos=500),
+        valid=True,
+    )
+
+
+def test_jwt_carries_active_account_and_eap() -> None:
+    token = unsigned_jwt(replace(loads(GO_ACTIVE_ACCOUNT_FIXTURES["blocked"]), eap=True))
+    identity = from_unverified_jwt(token)
+    assert identity.eap is True
+    assert identity.active_account is not None
+    assert identity.active_account.account_standing == AccountStanding(reason="NO_BILLING_DETAILS")

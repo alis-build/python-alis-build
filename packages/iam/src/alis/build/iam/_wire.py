@@ -301,6 +301,16 @@ def _require_bool(payload: dict[str, Any], key: str) -> bool:
     return value
 
 
+def _optional_bool(payload: dict[str, Any], key: str) -> bool | None:
+    """Like :func:`_require_bool`, but keeps an absent or null value apart from false."""
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise IdentityDecodeError(f"field {key!r} must be a boolean, got {type(value).__name__}")
+    return value
+
+
 def _require_float(payload: dict[str, Any], key: str) -> float:
     value = payload.get(key)
     if value is None:
@@ -367,6 +377,31 @@ def _parse_ideate_account(raw: dict[str, Any] | None) -> IdeateAccount | None:
     )
 
 
+def _parse_active_account(raw: dict[str, Any] | None) -> ActiveAccount | None:
+    if raw is None:
+        return None
+    standing = _require_mapping(raw, "account_standing")
+    blocked = _require_mapping(raw, "member_blocked_until")
+    return ActiveAccount(
+        account_id=_require_str(raw, "account_id"),
+        account_credit_limit=_require_float(raw, "account_credit_limit"),
+        user_credit_limit=_require_float(raw, "user_credit_limit"),
+        account_standing=None
+        if standing is None
+        else AccountStanding(
+            allow=_require_bool(standing, "allow"), reason=_require_str(standing, "reason")
+        ),
+        member_blocked_until=None
+        if blocked is None
+        else ClaimTime(
+            seconds=_require_int(blocked, "seconds"), nanos=_require_int(blocked, "nanos")
+        ),
+        valid=_optional_bool(raw, "valid"),
+        reason=_require_str(raw, "reason"),
+        comments=_require_str(raw, "comments"),
+    )
+
+
 def _parse_build_account(raw: dict[str, Any] | None) -> BuildAccount | None:
     if raw is None:
         return None
@@ -397,6 +432,8 @@ def _from_payload(payload: dict[str, Any]) -> Identity:
         exp=_require_int(payload, "exp"),
         app=_require_str(payload, "app"),
         scopes=_require_str_list(payload, "scopes"),
+        eap=_require_bool(payload, "eap"),
+        active_account=_parse_active_account(_require_mapping(payload, "active_account")),
         active_ideate_account=_parse_ideate_account(
             _require_mapping(payload, "active_ideate_account")
         ),
