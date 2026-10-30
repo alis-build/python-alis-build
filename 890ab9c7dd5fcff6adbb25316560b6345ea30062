@@ -1,0 +1,6 @@
+Bound decoded identity integers to their wire width.
+
+What: _require_int(bits=64 default); bits=32 for nanos, plan and seat. Out of range raises IdentityDecodeError naming the field. Float guards for exp and plan added (already rejected).
+Files: iam/_wire.py, tests/test_wire.py.
+Why: decoders elsewhere refuse wider values, so forwarding them broke the next hop. Expectations come from a probe of the reference decoder.
+Checks: make check (946 tests); boundary values still decode.
