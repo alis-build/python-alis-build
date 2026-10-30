@@ -1,0 +1,17 @@
+Add Identity.credit_standing(), CreditStanding, MEMBER_CREDIT_LIMIT_REACHED
+and ClaimTime.as_datetime().
+
+What: unknown when there is no standing or the account is not the active one;
+an account block outranks a member block; a member block applies until it
+lapses at the given (or current) time. Messages match the accounts service.
+Out-of-range claim times raise ValueError (normalised from OverflowError and
+OSError).
+
+Files: iam/_identity.py, iam/__init__.py, tests/test_identity.py.
+
+Why: services gate credit-costing work on the verdict carried in the token,
+without a round trip when the token can answer.
+
+Checks: make check (907 tests). Reference test table ported in full. A
+mutation that ignores `now` fails two tests. Independent review: two rounds,
+both rejections fixed; user approved committing after the review budget.
