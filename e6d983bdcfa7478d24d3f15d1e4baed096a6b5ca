@@ -1,0 +1,11 @@
+Phase verification: credit and Early Access Program helpers.
+
+Tests: make check -> ruff, taplo, mypy clean; 916 passed.
+Agent-run check: a token carrying eap, a TRIAL_EXPIRED standing and a false
+validity verdict, read through the JWT path, gives active_account_id "acme",
+is_eap True, the trial-expired message and the NO_BILLING_DETAILS verdict.
+Mutation checks: ignoring `now` fails two tests; judging the block with <=
+fails the boundary test.
+Phase verifier: Approve. Its gaps (block boundary, explicit eap false and
+integer cases) were closed in this commit.
+Hand check: none needed; a library with no user-visible surface this phase.
