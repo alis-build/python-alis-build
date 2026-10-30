@@ -1,0 +1,6 @@
+Add prompt, max_age and login_hint to build_authorize_url().
+
+What: prompt (string or sequence, space-joined), max_age (timedelta to whole seconds; zero sent, negative rejected), login_hint. Empty values omitted; a clash with extra_params raises ValueError; no options gives the same URL as before.
+Files: iam/authn/_protocol.py, tests/test_authn_protocol.py.
+Why: lets services force a fresh sign-in, show the account chooser, or pre-fill the email.
+Checks: make check (926 tests). Reviewed in the phase verification.
