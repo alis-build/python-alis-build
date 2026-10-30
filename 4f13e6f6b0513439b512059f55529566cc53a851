@@ -1,0 +1,10 @@
+Track verification: decode rejects integers and seat keys other services refuse.
+
+Tests: make check -> ruff, taplo, mypy clean; 964 passed.
+Agent-run: every row of the reference-decoder probe replayed in Python with the
+same accept/reject outcome and canonical key.
+Mutation checks: removing the long-key guard makes the 5000-digit case fail
+with a bare ValueError.
+Final verifier: all four acceptance criteria met; its one gap (no test pinned
+the long-key guard) closed in this commit.
+Hand check: none needed; library.
