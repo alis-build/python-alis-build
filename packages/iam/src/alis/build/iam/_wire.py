@@ -25,7 +25,10 @@ from typing import Any, Final
 from ._errors import IdentityDecodeError
 from ._identity import (
     Account,
+    AccountStanding,
+    ActiveAccount,
     BuildAccount,
+    ClaimTime,
     IdeateAccount,
     Identity,
     IdentityType,
@@ -177,6 +180,50 @@ def _build_account(account: BuildAccount | None) -> str:
     return f'{{"account_id":{_quote(account.account_id)}}}'
 
 
+def _account_standing(standing: AccountStanding) -> str:
+    # The format omits false and empty values here, so a blocked standing has
+    # no "allow" and an empty one is {}.
+    parts = []
+    if standing.allow:
+        parts.append('"allow":true')
+    if standing.reason:
+        parts.append(f'"reason":{_quote(standing.reason)}')
+    return "{" + ",".join(parts) + "}"
+
+
+def _claim_time(value: ClaimTime) -> str:
+    parts = []
+    if value.seconds:
+        parts.append(f'"seconds":{value.seconds:d}')
+    if value.nanos:
+        parts.append(f'"nanos":{value.nanos:d}')
+    return "{" + ",".join(parts) + "}"
+
+
+def _active_account(account: ActiveAccount | None) -> str:
+    if account is None:
+        return "null"
+    # The three basics are always written; the rest only when set. The optional
+    # objects and `valid` are pointers in the format, omitted only when absent,
+    # so valid=False is still written.
+    parts = [
+        f'"account_id":{_quote(account.account_id)}',
+        f'"account_credit_limit":{_number(account.account_credit_limit)}',
+        f'"user_credit_limit":{_number(account.user_credit_limit)}',
+    ]
+    if account.account_standing is not None:
+        parts.append(f'"account_standing":{_account_standing(account.account_standing)}')
+    if account.member_blocked_until is not None:
+        parts.append(f'"member_blocked_until":{_claim_time(account.member_blocked_until)}')
+    if account.valid is not None:
+        parts.append(f'"valid":{"true" if account.valid else "false"}')
+    if account.reason:
+        parts.append(f'"reason":{_quote(account.reason)}')
+    if account.comments:
+        parts.append(f'"comments":{_quote(account.comments)}')
+    return "{" + ",".join(parts) + "}"
+
+
 def _string_list(values: list[str] | None) -> str:
     if values is None:
         return "null"
@@ -211,6 +258,8 @@ def dumps(identity: Identity, /) -> bytes:
         f'"exp":{identity.exp:d},'
         f'"app":{_quote(identity.app)},'
         f'"scopes":{_string_list(identity.scopes)},'
+        f'"eap":{"true" if identity.eap else "false"},'
+        f'"active_account":{_active_account(identity.active_account)},'
         f'"active_ideate_account":{_ideate_account(identity.active_ideate_account)},'
         f'"active_build_account":{_build_account(identity.active_build_account)},'
         f'"authz_roles":{_string_list(identity.authz_roles)},'

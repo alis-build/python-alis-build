@@ -59,6 +59,60 @@ class BuildAccount:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountStanding:
+    """The account's credit verdict, as the accounts service decided it at minting.
+
+    The issuer leaves empty values out, so a blocked standing arrives without
+    ``allow`` at all: only the absence of the whole object means "unknown".
+    """
+
+    allow: bool = False
+    reason: str = ""
+    """An ``AllowTransactionResponse.Reason`` name, e.g. ``"NO_BILLING_DETAILS"``."""
+
+
+@dataclass(frozen=True, slots=True)
+class ClaimTime:
+    """A protobuf Timestamp as the issuer mints it into a claim."""
+
+    seconds: int = 0
+    nanos: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ActiveAccount:
+    """The user's single active account, shared by every product.
+
+    The optional fields are ``None`` when the issuer left them out, which is
+    different from a false or empty value: an absent ``valid`` means "no
+    verdict", while ``valid=False`` is a verdict.
+    """
+
+    account_id: str = ""
+    """The bare account id, without the ``accounts/`` prefix."""
+
+    account_credit_limit: float = 0.0
+    user_credit_limit: float = 0.0
+    account_standing: AccountStanding | None = None
+    """Whether the account may spend credits. ``None`` when no standing was received."""
+
+    member_blocked_until: ClaimTime | None = None
+    """Set while the user's own spend limit on the account blocks them."""
+
+    valid: bool | None = None
+    """Whether this user may do credit-costing work on the account.
+
+    ``None`` when the issuer has no verdict for the member.
+    """
+
+    reason: str = ""
+    """Why ``valid`` is false, as a ``Member.Validity.Reason`` name. Empty when valid."""
+
+    comments: str = ""
+    """Why ``valid`` is false in words, safe to show the user. Empty when valid."""
+
+
+@dataclass(frozen=True, slots=True)
 class Identity:
     """An authenticated user, service account, or system actor.
 
@@ -83,8 +137,27 @@ class Identity:
     exp: int = 0
     app: str = ""
     scopes: list[str] | None = None
+    eap: bool = False
+    """The user's Early Access Program preference when the token was issued.
+
+    Absent means ``False``. It enables previews, never additional permissions.
+    """
+
+    active_account: ActiveAccount | None = None
+    """The user's single active account, shared by every product.
+
+    Prefer :meth:`active_account_id` over reading this or the deprecated
+    per-product fields directly.
+    """
+
     active_ideate_account: IdeateAccount | None = None
+    """Deprecated: mirrored from ``active_account`` by the issuer while consumers
+    migrate. Use :meth:`active_account_id`."""
+
     active_build_account: BuildAccount | None = None
+    """Deprecated: mirrored from ``active_account`` by the issuer while consumers
+    migrate. Use :meth:`active_account_id`."""
+
     authz_roles: list[str] | None = None
     """The roles a scoped credential is limited to.
 
@@ -186,7 +259,10 @@ SYSTEM_IDENTITY = Identity(type=IdentityType.SYSTEM, id="system")
 __all__ = [
     "SYSTEM_IDENTITY",
     "Account",
+    "AccountStanding",
+    "ActiveAccount",
     "BuildAccount",
+    "ClaimTime",
     "IdeateAccount",
     "Identity",
     "IdentityType",

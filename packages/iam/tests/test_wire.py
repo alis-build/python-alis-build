@@ -8,13 +8,16 @@ every other service on the platform.
 from __future__ import annotations
 
 import json
-from dataclasses import fields
+from dataclasses import fields, replace
 
 import pytest
 
 from alis.build.iam import (
     Account,
+    AccountStanding,
+    ActiveAccount,
     BuildAccount,
+    ClaimTime,
     IdeateAccount,
     Identity,
     IdentityDecodeError,
@@ -34,6 +37,7 @@ from alis.build.iam import (
 CANONICAL = (
     '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
     '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,'
+    '"eap":false,"active_account":null,'
     '"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}'
 )
 
@@ -41,10 +45,58 @@ CANONICAL_JWT = (
     "eyJhbGciOiJub25lIn0."
     "eyJUeXBlIjoidXNlciIsInN1YiI6IjE5MzQ4NzI5NDgiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJh"
     "Y2NvdW50cyI6bnVsbCwiZ3JvdXBzIjpbImRmOTEzcjg4OCJdLCJwb2xpY3kiOiIiLCJleHAiOjAsImFwcCI6"
-    "IiIsInNjb3BlcyI6bnVsbCwiYWN0aXZlX2lkZWF0ZV9hY2NvdW50IjpudWxsLCJhY3RpdmVfYnVpbGRfYWNj"
-    "b3VudCI6bnVsbCwiYXV0aHpfcm9sZXMiOm51bGwsInJlc3RyaWN0ZWQiOmZhbHNlfQ"
+    "IiIsInNjb3BlcyI6bnVsbCwiZWFwIjpmYWxzZSwiYWN0aXZlX2FjY291bnQiOm51bGwsImFjdGl2ZV9pZGVh"
+    "dGVfYWNjb3VudCI6bnVsbCwiYWN0aXZlX2J1aWxkX2FjY291bnQiOm51bGwsImF1dGh6X3JvbGVzIjpudWxs"
+    "LCJyZXN0cmljdGVkIjpmYWxzZX0"
     ".###"
 )
+
+# Same identity as the conftest `user` fixture, usable inside parametrize.
+USER = Identity(
+    type=IdentityType.USER, id="1934872948", email="john@example.com", group_ids=["df913r888"]
+)
+
+# Bytes Go emits for USER carrying the active account and EAP claims. Captured
+# from json.Marshal, never hand-written: the omitempty rules are what is tested.
+GO_ACTIVE_ACCOUNT_FIXTURES = {
+    "eap": (
+        '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
+        '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,"eap":true,'
+        '"active_account":null,"active_ideate_account":null,"active_build_account":null,'
+        '"authz_roles":null,"restricted":false}'
+    ),
+    "full": (
+        '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
+        '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,"eap":false,'
+        '"active_account":{"account_id":"acme","account_credit_limit":1500.5,'
+        '"user_credit_limit":250,"account_standing":{"allow":true},'
+        '"member_blocked_until":{"seconds":1793491200,"nanos":500},"valid":true},'
+        '"active_ideate_account":null,"active_build_account":null,"authz_roles":null,'
+        '"restricted":false}'
+    ),
+    "invalid_with_escapes": (
+        '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
+        '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,"eap":false,'
+        '"active_account":{"account_id":"acme","account_credit_limit":0,"user_credit_limit":0,'
+        '"valid":false,"reason":"NO_BILLING_DETAILS",'
+        '"comments":"Billing \\u0026 limits \\u003cnone\\u003e"},"active_ideate_account":null,'
+        '"active_build_account":null,"authz_roles":null,"restricted":false}'
+    ),
+    "empty_nested": (
+        '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
+        '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,"eap":false,'
+        '"active_account":{"account_id":"","account_credit_limit":0,"user_credit_limit":0,'
+        '"account_standing":{},"member_blocked_until":{}},"active_ideate_account":null,'
+        '"active_build_account":null,"authz_roles":null,"restricted":false}'
+    ),
+    "blocked": (
+        '{"Type":"user","sub":"1934872948","email":"john@example.com","accounts":null,'
+        '"groups":["df913r888"],"policy":"","exp":0,"app":"","scopes":null,"eap":false,'
+        '"active_account":{"account_id":"acme","account_credit_limit":0,"user_credit_limit":0,'
+        '"account_standing":{"reason":"NO_BILLING_DETAILS"}},"active_ideate_account":null,'
+        '"active_build_account":null,"authz_roles":null,"restricted":false}'
+    ),
+}
 
 
 def test_canonical_bytes(user: Identity) -> None:
@@ -64,14 +116,14 @@ def test_unsigned_jwt(user: Identity) -> None:
         pytest.param(
             Identity(type=""),
             '{"Type":"","sub":"","email":"","accounts":null,"groups":null,"policy":"",'
-            '"exp":0,"app":"","scopes":null,"active_ideate_account":null,'
+            '"exp":0,"app":"","scopes":null,"eap":false,"active_account":null,"active_ideate_account":null,'
             '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="zero",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u2", accounts={}, group_ids=[], scopes=[]),
             '{"Type":"user","sub":"u2","email":"","accounts":{},"groups":[],"policy":"",'
-            '"exp":0,"app":"","scopes":[],"active_ideate_account":null,'
+            '"exp":0,"app":"","scopes":[],"eap":false,"active_account":null,"active_ideate_account":null,'
             '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="empty_collections_are_not_null",
         ),
@@ -79,20 +131,20 @@ def test_unsigned_jwt(user: Identity) -> None:
             Identity(type=IdentityType.USER, id="a<b>c&d", email="a&b@example.com", app="<script>"),
             '{"Type":"user","sub":"a\\u003cb\\u003ec\\u0026d","email":"a\\u0026b@example.com",'
             '"accounts":null,"groups":null,"policy":"","exp":0,"app":"\\u003cscript\\u003e",'
-            '"scopes":null,"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}',
+            '"scopes":null,"eap":false,"active_account":null,"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="html_chars_escaped",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u1", email="jörg.müller@例え.jp"),
             '{"Type":"user","sub":"u1","email":"jörg.müller@例え.jp","accounts":null,'
-            '"groups":null,"policy":"","exp":0,"app":"","scopes":null,'
+            '"groups":null,"policy":"","exp":0,"app":"","scopes":null,"eap":false,"active_account":null,'
             '"active_ideate_account":null,"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="non_ascii_not_escaped",
         ),
         pytest.param(
             Identity(type=IdentityType.USER, id="u8", exp=-1),
             '{"Type":"user","sub":"u8","email":"","accounts":null,"groups":null,"policy":"",'
-            '"exp":-1,"app":"","scopes":null,"active_ideate_account":null,'
+            '"exp":-1,"app":"","scopes":null,"eap":false,"active_account":null,"active_ideate_account":null,'
             '"active_build_account":null,"authz_roles":null,"restricted":false}',
             id="negative_exp",
         ),
@@ -100,6 +152,65 @@ def test_unsigned_jwt(user: Identity) -> None:
 )
 def test_encoding_quirks(identity: Identity, expected: str) -> None:
     assert dumps(identity).decode() == expected
+
+
+@pytest.mark.parametrize(
+    ("identity", "key"),
+    [
+        pytest.param(replace(USER, eap=True), "eap", id="eap"),
+        pytest.param(
+            replace(
+                USER,
+                active_account=ActiveAccount(
+                    account_id="acme",
+                    account_credit_limit=1500.5,
+                    user_credit_limit=250,
+                    account_standing=AccountStanding(allow=True),
+                    member_blocked_until=ClaimTime(seconds=1793491200, nanos=500),
+                    valid=True,
+                ),
+            ),
+            "full",
+            id="full",
+        ),
+        pytest.param(
+            replace(
+                USER,
+                active_account=ActiveAccount(
+                    account_id="acme",
+                    valid=False,
+                    reason="NO_BILLING_DETAILS",
+                    comments="Billing & limits <none>",
+                ),
+            ),
+            "invalid_with_escapes",
+            id="invalid_with_escapes",
+        ),
+        pytest.param(
+            replace(
+                USER,
+                active_account=ActiveAccount(
+                    account_standing=AccountStanding(), member_blocked_until=ClaimTime()
+                ),
+            ),
+            "empty_nested",
+            id="empty_nested",
+        ),
+        pytest.param(
+            replace(
+                USER,
+                active_account=ActiveAccount(
+                    account_id="acme", account_standing=AccountStanding(reason="NO_BILLING_DETAILS")
+                ),
+            ),
+            "blocked",
+            id="blocked",
+        ),
+    ],
+)
+def test_active_account_encoding_matches_go(identity: Identity, key: str) -> None:
+    """Mirrors Go's omitempty: a nil pointer is left out, but a false one is not."""
+    assert dumps(identity).decode() == GO_ACTIVE_ACCOUNT_FIXTURES[key]
 
 
 def test_map_keys_sort_byte_wise() -> None:
@@ -262,6 +373,17 @@ def _populated() -> Identity:
         exp=1893456000,
         app="app-id",
         scopes=["scope-a"],
+        eap=True,
+        active_account=ActiveAccount(
+            account_id="acme",
+            account_credit_limit=10,
+            user_credit_limit=5,
+            account_standing=AccountStanding(allow=True),
+            member_blocked_until=ClaimTime(seconds=1793491200),
+            valid=False,
+            reason="NO_BILLING_DETAILS",
+            comments="none",
+        ),
         active_ideate_account=IdeateAccount(account_id="ideate-1"),
         active_build_account=BuildAccount(account_id="build-1"),
         authz_roles=["roles/app.developer"],
