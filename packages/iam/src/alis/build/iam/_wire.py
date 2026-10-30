@@ -285,13 +285,18 @@ def _require_str(payload: dict[str, Any], key: str) -> str:
     return value
 
 
-def _require_int(payload: dict[str, Any], key: str) -> int:
+def _require_int(payload: dict[str, Any], key: str, bits: int = 64) -> int:
     value = payload.get(key)
     if value is None:
         return 0
     # bool is an int subclass in Python, but the format wants a real integer.
     if not isinstance(value, int) or isinstance(value, bool):
         raise IdentityDecodeError(f"field {key!r} must be an integer, got {type(value).__name__}")
+    # Bounded to the signed width other services decode this field into, so an
+    # identity accepted here is never refused once it is forwarded.
+    limit = 1 << (bits - 1)
+    if not -limit <= value < limit:
+        raise IdentityDecodeError(f"field {key!r} is out of range for a {bits}-bit integer")
     return value
 
 
@@ -351,7 +356,9 @@ def _parse_seats(raw: dict[str, Any] | None) -> dict[str, Seat] | None:
     for key, value in raw.items():
         if not isinstance(value, dict):
             raise IdentityDecodeError(f"seat {key!r} must be an object")
-        seats[key] = Seat(plan=_require_int(value, "plan"), seat=_require_int(value, "seat"))
+        seats[key] = Seat(
+            plan=_require_int(value, "plan", bits=32), seat=_require_int(value, "seat", bits=32)
+        )
     return seats
 
 
@@ -397,7 +404,7 @@ def _parse_active_account(raw: dict[str, Any] | None) -> ActiveAccount | None:
         member_blocked_until=None
         if blocked is None
         else ClaimTime(
-            seconds=_require_int(blocked, "seconds"), nanos=_require_int(blocked, "nanos")
+            seconds=_require_int(blocked, "seconds"), nanos=_require_int(blocked, "nanos", bits=32)
         ),
         valid=_optional_bool(raw, "valid"),
         reason=_require_str(raw, "reason"),

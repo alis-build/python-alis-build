@@ -296,6 +296,10 @@ def test_unknown_keys_ignored() -> None:
     [
         pytest.param('{"exp":"not-an-int"}', id="exp_string"),
         pytest.param('{"exp":1.5}', id="exp_float"),
+        pytest.param('{"exp":1.0}', id="exp_integral_float"),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":1e3,"seat":1}}}}}', id="plan_exponent"
+        ),
         pytest.param('{"sub":123}', id="sub_int"),
         pytest.param('{"groups":"a"}', id="groups_string"),
         pytest.param('{"groups":[1]}', id="groups_non_string"),
@@ -560,3 +564,53 @@ def test_jwt_carries_active_account_and_eap() -> None:
     assert identity.eap is True
     assert identity.active_account is not None
     assert identity.active_account.account_standing == AccountStanding(reason="NO_BILLING_DETAILS")
+
+
+# -- integer widths ---------------------------------------------------------
+#
+# Every expectation here is how other services' decoders treat the same JSON:
+# an integer that does not fit the field's width is refused there, so it must
+# be refused here before it is forwarded.
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param('{"exp":9223372036854775808}', id="exp_above_int64"),
+        pytest.param('{"exp":-9223372036854775809}', id="exp_below_int64"),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"seconds":9223372036854775808}}}',
+            id="seconds_above_int64",
+        ),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"nanos":2147483648}}}',
+            id="nanos_above_int32",
+        ),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"nanos":-2147483649}}}',
+            id="nanos_below_int32",
+        ),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":2147483648,"seat":0}}}}}',
+            id="plan_above_int32",
+        ),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":0,"seat":-2147483649}}}}}',
+            id="seat_below_int32",
+        ),
+    ],
+)
+def test_integers_outside_their_width_rejected(payload: str) -> None:
+    with pytest.raises(IdentityDecodeError, match="out of range"):
+        loads(payload)
+
+
+@pytest.mark.parametrize("exp", [9223372036854775807, -9223372036854775808])
+def test_int64_boundaries_accepted(exp: int) -> None:
+    assert loads(json.dumps({"exp": exp})).exp == exp
+
+
+def test_int32_boundary_accepted() -> None:
+    identity = loads('{"active_account":{"member_blocked_until":{"nanos":2147483647}}}')
+    assert identity.active_account is not None
+    assert identity.active_account.member_blocked_until == ClaimTime(nanos=2147483647)
