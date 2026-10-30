@@ -66,7 +66,9 @@ class JwtParts:
         return f"{self.header}.{self.payload}".encode("ascii")
 
 
-def build_authorize_url(
+# Past the three positionals every argument is keyword-only and optional: each
+# maps to one query parameter, so grouping them would only add a wrapper type.
+def build_authorize_url(  # noqa: PLR0913
     authorize_url: str,
     redirect_uri: str,
     state: str,
@@ -75,8 +77,15 @@ def build_authorize_url(
     client_id: str = "",
     nonce: str = "",
     extra_params: Mapping[str, str] | None = None,
+    prompt: str | Sequence[str] | None = None,
+    max_age: timedelta | None = None,
+    login_hint: str = "",
 ) -> str:
     """Builds the URL to send a user to in order to sign in.
+
+    The sign-in options are OpenID Connect interaction parameters. They only
+    add query parameters, so an identity provider that predates them ignores
+    them and the sign-in behaves as before.
 
     Args:
         authorize_url: The authorization server's authorize endpoint.
@@ -86,17 +95,42 @@ def build_authorize_url(
         client_id: The registered application's id, if it has one.
         nonce: An unguessable value the identity token should echo back.
         extra_params: Any further query parameters to include.
+        prompt: ``"login"`` forces a fresh sign-in, ``"select_account"`` shows
+            the provider's account chooser, ``"consent"`` asks for consent
+            again. Several values are sent space-separated. A plain string is
+            one value. Empty means not sent.
+        max_age: Re-authenticate the user if they last signed in longer ago
+            than this. Sent as whole seconds; zero forces a fresh sign-in.
+        login_hint: The email the provider should pre-fill or pre-select. A
+            hint only; it never identifies the user. Empty means not sent.
 
     Returns:
         The URL, with parameters in a stable order.
+
+    Raises:
+        ValueError: If ``max_age`` is negative, or a sign-in option is also
+            given in ``extra_params``.
     """
     params: dict[str, str] = {"redirect_uri": redirect_uri, "state": state}
     if client_id:
         params["client_id"] = client_id
     if nonce:
         params["nonce"] = nonce
+    options: dict[str, str] = {}
+    if prompt:
+        options["prompt"] = prompt if isinstance(prompt, str) else " ".join(prompt)
+    if max_age is not None:
+        if max_age < timedelta(0):
+            raise ValueError(f"max_age must not be negative, got {max_age}")
+        options["max_age"] = str(int(max_age.total_seconds()))
+    if login_hint:
+        options["login_hint"] = login_hint
     if extra_params:
+        clash = sorted(options.keys() & extra_params.keys())
+        if clash:
+            raise ValueError(f"{', '.join(clash)} given both as an argument and in extra_params")
         params.update(extra_params)
+    params.update(options)
     # Sorted so the same inputs always produce the same URL.
     return f"{authorize_url}?{urlencode(sorted(params.items()))}"
 
