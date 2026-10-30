@@ -622,7 +622,20 @@ def test_int32_boundary_accepted() -> None:
 # key and re-encode valid ones in canonical decimal.
 
 
-@pytest.mark.parametrize("key", ["abc", " 1", "1_0", "", "2147483648", "+"])
+@pytest.mark.parametrize(
+    "key",
+    [
+        pytest.param("abc", id="letters"),
+        pytest.param(" 1", id="leading_space"),
+        pytest.param("1_0", id="underscore"),
+        pytest.param("", id="empty"),
+        pytest.param("2147483648", id="above_int32"),
+        pytest.param("+", id="sign_only"),
+        # Past Python's limit on converting long digit strings, so this must be
+        # refused before conversion or it escapes as a bare ValueError.
+        pytest.param("1" * 5000, id="past_int_string_limit"),
+    ],
+)
 def test_invalid_seat_keys_rejected(key: str) -> None:
     payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
     with pytest.raises(IdentityDecodeError, match="seat key"):
