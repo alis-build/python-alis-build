@@ -1,0 +1,9 @@
+Phase verification: identity wire format carries eap and active_account.
+
+Tests: make check -> ruff, taplo, mypy clean; 873 passed.
+Agent-run check: all six captured reference fixtures (unset, eap, full,
+invalid with HTML escapes, empty nested objects, blocked) pass loads() then
+dumps() byte-identical; the full fixture decodes every active_account field.
+Phase verifier: Approve. Its one should-fix (dumps docstring claimed nothing is
+omitted) was fixed in this commit together with a non-finite limit guard test.
+Hand check: none needed; a library with no user-visible surface this phase.
