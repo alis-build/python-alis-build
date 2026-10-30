@@ -8,10 +8,36 @@ Decoding never mutates an identity either; it returns a new one (see
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from typing import Final
 
 from ._registry import SystemConfig, system_config
+
+MEMBER_CREDIT_LIMIT_REACHED: Final = "MEMBER_CREDIT_LIMIT_REACHED"
+"""The :class:`CreditStanding` reason for a user blocked by their own spend limit.
+
+As opposed to the account's limit, whose reasons come from the accounts service.
+"""
+
+# Keep in step with the text the accounts service returns from AllowTransaction:
+# a user should read the same words whichever way the verdict reached them.
+_CREDIT_MESSAGES: Final[Mapping[str, str]] = {
+    "NO_BILLING_DETAILS": "Please add your billing details to continue.",
+    "TRIAL_EXPIRED": "Your account trial is expired. Please upgrade your plan to continue.",
+    "ACCOUNT_ARCHIVED": "This account is archived.",
+    MEMBER_CREDIT_LIMIT_REACHED: (
+        "You have reached your personal credit limit for this billing period. "
+        "Please contact your account administrator to adjust your limit."
+    ),
+}
+# ACCOUNT_CREDIT_LIMIT_REACHED, and any reason added later.
+_DEFAULT_CREDIT_MESSAGE: Final = (
+    "Your account has reached its credit limit. "
+    "Please purchase new credits or upgrade your plan to continue."
+)
 
 
 class IdentityType(StrEnum):
@@ -78,6 +104,24 @@ class ClaimTime:
     seconds: int = 0
     nanos: int = 0
 
+    def as_datetime(self) -> datetime:
+        """Returns the claim as an aware UTC datetime.
+
+        A datetime holds microseconds, so any finer precision is truncated.
+
+        Raises:
+            ValueError: If the claim lies outside the years a datetime can
+                represent (1 to 9999). Issuers never mint such values.
+        """
+        try:
+            return datetime.fromtimestamp(self.seconds, tz=UTC) + timedelta(
+                microseconds=self.nanos // 1000
+            )
+        except (OverflowError, OSError) as exc:
+            # The platform's time_t limit surfaces as these rather than as
+            # ValueError; normalise so callers have one exception to handle.
+            raise ValueError(f"claim time out of range: {self.seconds}s") from exc
+
 
 @dataclass(frozen=True, slots=True)
 class ActiveAccount:
@@ -110,6 +154,28 @@ class ActiveAccount:
 
     comments: str = ""
     """Why ``valid`` is false in words, safe to show the user. Empty when valid."""
+
+
+@dataclass(frozen=True, slots=True)
+class CreditStanding:
+    """What an identity's token says about charging credit-costing work to an account."""
+
+    known: bool = False
+    """False when the token cannot answer: no standing claim, or the account is
+    not the active one. Callers decide what unknown means, typically by asking
+    the accounts service."""
+
+    allowed: bool = False
+    reason: str = ""
+    """An ``AllowTransactionResponse.Reason`` name, or
+    :data:`MEMBER_CREDIT_LIMIT_REACHED`. Empty when allowed."""
+
+    message: str = ""
+    """Safe to show the end user. Empty when allowed."""
+
+    blocked_until: datetime | None = None
+    """When a member's own block lapses. ``None`` unless ``reason`` is
+    :data:`MEMBER_CREDIT_LIMIT_REACHED`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +309,46 @@ class Identity:
                 return account.account_id.removeprefix("accounts/")
         return ""
 
+    def credit_standing(self, account: str, now: datetime | None = None) -> CreditStanding:
+        """Reports whether the token allows credit-costing work on ``account``.
+
+        The token only describes the active account, so any other account is
+        unknown. An account block outranks the user's own spend block.
+
+        Args:
+            account: ``accounts/{id}`` or the bare id.
+            now: The time to judge a member block against. Must be
+                timezone-aware. Defaults to the current UTC time.
+
+        Raises:
+            ValueError: If the member block lies outside the years a datetime
+                can represent; see :meth:`ClaimTime.as_datetime`.
+        """
+        active = self.active_account
+        if (
+            active is None
+            or active.account_standing is None
+            or account.removeprefix("accounts/") != self.active_account_id()
+        ):
+            return CreditStanding()
+        standing = active.account_standing
+        if not standing.allow:
+            return CreditStanding(
+                known=True,
+                reason=standing.reason,
+                message=_CREDIT_MESSAGES.get(standing.reason, _DEFAULT_CREDIT_MESSAGE),
+            )
+        if active.member_blocked_until is not None:
+            until = active.member_blocked_until.as_datetime()
+            if (now or datetime.now(UTC)) < until:
+                return CreditStanding(
+                    known=True,
+                    reason=MEMBER_CREDIT_LIMIT_REACHED,
+                    message=_CREDIT_MESSAGES[MEMBER_CREDIT_LIMIT_REACHED],
+                    blocked_until=until,
+                )
+        return CreditStanding(known=True, allowed=True)
+
     def user(self) -> str:
         """Returns the ``users/{id}`` resource name, or ``""`` for non-users."""
         if self.type == IdentityType.USER:
@@ -279,12 +385,14 @@ SYSTEM_IDENTITY = Identity(type=IdentityType.SYSTEM, id="system")
 """A service acting as itself. Frozen, so it cannot be mutated process-wide."""
 
 __all__ = [
+    "MEMBER_CREDIT_LIMIT_REACHED",
     "SYSTEM_IDENTITY",
     "Account",
     "AccountStanding",
     "ActiveAccount",
     "BuildAccount",
     "ClaimTime",
+    "CreditStanding",
     "IdeateAccount",
     "Identity",
     "IdentityType",

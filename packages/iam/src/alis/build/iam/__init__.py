@@ -54,12 +54,14 @@ from ._errors import (
     MissingDependencyError,
 )
 from ._identity import (
+    MEMBER_CREDIT_LIMIT_REACHED,
     SYSTEM_IDENTITY,
     Account,
     AccountStanding,
     ActiveAccount,
     BuildAccount,
     ClaimTime,
+    CreditStanding,
     IdeateAccount,
     Identity,
     IdentityType,
@@ -86,12 +88,14 @@ from ._wire import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "MEMBER_CREDIT_LIMIT_REACHED",
     "SYSTEM_IDENTITY",
     "Account",
     "AccountStanding",
     "ActiveAccount",
     "BuildAccount",
     "ClaimTime",
+    "CreditStanding",
     "IamError",
     "IdeateAccount",
     "Identity",
