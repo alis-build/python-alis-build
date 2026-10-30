@@ -1,0 +1,6 @@
+Thread sign-in options through BaseAuthnClient.
+
+What: authorize_url() gains prompt, max_age, login_hint; start_login() gains those plus extra_params, all keyword-only and passed to build_authorize_url().
+Files: iam/authn/_base.py, tests/test_authn_login.py.
+Why: the async and sync clients share BaseAuthnClient, so both get the options.
+Checks: make check (930 tests). Reviewed in the phase verification.
