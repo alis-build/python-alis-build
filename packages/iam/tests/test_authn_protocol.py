@@ -304,3 +304,8 @@ def test_tokens_merge_preserves_an_unrotated_refresh_token() -> None:
     assert (
         existing.merged_with(Tokens(access_token="new", refresh_token="rt2")).refresh_token == "rt2"
     )
+
+
+def test_max_age_truncation_is_exact_for_large_values() -> None:
+    url = build_authorize_url("https://a/authorize", "r", "s", max_age=timedelta.max)
+    assert "max_age=86399999999999&" in url

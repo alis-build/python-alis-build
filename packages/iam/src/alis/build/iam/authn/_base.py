@@ -219,9 +219,17 @@ class BaseAuthnClient:
             extra_params: Any further query parameters for the authorize URL.
 
         Raises:
-            ValueError: If ``max_age`` is negative, or a sign-in option is also
-                given in ``extra_params``.
+            ValueError: If ``max_age`` is negative, or ``extra_params`` repeats
+                a sign-in option or names ``state``, ``nonce`` or
+                ``redirect_uri``, which this login generates and records.
         """
+        if extra_params:
+            # Replacing these in the URL alone would leave the cookie recording
+            # different values, so the callback would reject the login with a
+            # mismatch that is hard to trace back here.
+            generated = sorted(extra_params.keys() & {"state", "nonce", "redirect_uri"})
+            if generated:
+                raise ValueError(f"{', '.join(generated)} cannot be set in extra_params")
         state = generate_state()
         nonce = generate_nonce()
         transaction = LoginTransaction(

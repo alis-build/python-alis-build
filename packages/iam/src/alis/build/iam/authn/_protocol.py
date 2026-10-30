@@ -122,7 +122,8 @@ def build_authorize_url(  # noqa: PLR0913
     if max_age is not None:
         if max_age < timedelta(0):
             raise ValueError(f"max_age must not be negative, got {max_age}")
-        options["max_age"] = str(int(max_age.total_seconds()))
+        # Integer division keeps it exact; going through a float rounds large values.
+        options["max_age"] = str(max_age // timedelta(seconds=1))
     if login_hint:
         options["login_hint"] = login_hint
     if extra_params:

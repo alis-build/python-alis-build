@@ -276,3 +276,16 @@ def test_start_login_without_options_is_unchanged(client: Any) -> None:
 def test_client_authorize_url_passes_options(client: Any) -> None:
     url = client.authorize_url(REDIRECT, "st8", login_hint="x@y.com")
     assert _query(url)["login_hint"] == ["x@y.com"]
+
+
+@pytest.mark.parametrize("key", ["state", "nonce", "redirect_uri"])
+def test_start_login_rejects_extra_params_that_replace_generated_values(
+    client: Any, key: str
+) -> None:
+    """The URL must carry the same state and nonce the login cookie records.
+
+    Otherwise the callback rejects the login with a mismatch the caller cannot
+    trace back to this call.
+    """
+    with pytest.raises(ValueError, match=key):
+        client.start_login(REDIRECT, extra_params={key: "x"})
