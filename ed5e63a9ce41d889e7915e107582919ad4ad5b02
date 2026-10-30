@@ -1,0 +1,15 @@
+Encode the eap and active_account identity claims.
+
+What: Identity gains eap and active_account (ActiveAccount, AccountStanding,
+ClaimTime, all exported). dumps() writes both right after "scopes"; inside
+active_account the optional values are written only when set, and valid=False
+is still written while an absent verdict is omitted.
+
+Files: iam/__init__.py, iam/_identity.py, iam/_wire.py, tests/test_wire.py.
+
+Why: other services already mint these claims; the codec must emit the same
+bytes. Expected values are captured from the issuing implementation, and the
+existing full-wire literals were updated for the two new keys. Decoding lands
+next, which is what stops forwarded identities losing the claims.
+
+Checks: make check (ruff, taplo, mypy, 850 tests); independent review approved.
