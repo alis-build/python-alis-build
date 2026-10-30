@@ -221,6 +221,14 @@ class Identity:
             return f"{self.type}:{self.email}"
         return f"{self.type}:{self.id}"
 
+    def is_eap(self) -> bool:
+        """Reports whether the user opted into the Early Access Program.
+
+        It enables previews, never extra permissions: callers still apply their
+        usual authentication and authorization.
+        """
+        return self.eap
+
     def user(self) -> str:
         """Returns the ``users/{id}`` resource name, or ``""`` for non-users."""
         if self.type == IdentityType.USER:

@@ -189,3 +189,19 @@ def test_restricted_system_is_not_privileged() -> None:
     assert system.is_system() is True
     assert system.is_privileged() is False
     assert SYSTEM_IDENTITY.is_privileged() is True
+
+
+# -- early access program ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("identity", "expected"),
+    [
+        pytest.param(Identity(), False, id="default"),
+        pytest.param(Identity(eap=True), True, id="opted_in"),
+        pytest.param(loads('{"eap":true}'), True, id="decoded"),
+        pytest.param(loads("{}"), False, id="claim_absent"),
+    ],
+)
+def test_is_eap(identity: Identity, expected: bool) -> None:
+    assert identity.is_eap() is expected
