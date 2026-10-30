@@ -4,8 +4,12 @@ All notable changes to this package are documented here. The format follows
 [Conventional Commits](https://www.conventionalcommits.org), and versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.1.0 (2026-10-30)
 
+
+### Documentation
+
+* package guide ([09bcda1](https://github.com/alis-build/python-alis-build/commit/09bcda135c4948d300c057febf00582292d25485))
 
 ### Features
 
