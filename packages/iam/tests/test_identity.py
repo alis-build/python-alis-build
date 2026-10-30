@@ -8,6 +8,9 @@ import pytest
 
 from alis.build.iam import (
     SYSTEM_IDENTITY,
+    ActiveAccount,
+    BuildAccount,
+    IdeateAccount,
     Identity,
     IdentityType,
     SystemConfig,
@@ -205,3 +208,55 @@ def test_restricted_system_is_not_privileged() -> None:
 )
 def test_is_eap(identity: Identity, expected: bool) -> None:
     assert identity.is_eap() is expected
+
+
+# -- active account ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("identity", "expected"),
+    [
+        pytest.param(Identity(), "", id="none_set"),
+        pytest.param(
+            Identity(active_account=ActiveAccount(account_id="accounts/acme")),
+            "acme",
+            id="prefix_stripped",
+        ),
+        pytest.param(
+            Identity(
+                active_account=ActiveAccount(account_id="acme"),
+                active_build_account=BuildAccount(account_id="other"),
+            ),
+            "acme",
+            id="active_account_preferred",
+        ),
+        pytest.param(
+            Identity(
+                active_account=ActiveAccount(),
+                active_build_account=BuildAccount(account_id="accounts/b1"),
+            ),
+            "b1",
+            id="empty_active_falls_back_to_build",
+        ),
+        pytest.param(
+            Identity(active_ideate_account=IdeateAccount(account_id="i1")),
+            "i1",
+            id="ideate_only",
+        ),
+        pytest.param(
+            Identity(
+                active_build_account=BuildAccount(account_id=""),
+                active_ideate_account=IdeateAccount(account_id="i1"),
+            ),
+            "i1",
+            id="empty_build_falls_back_to_ideate",
+        ),
+        pytest.param(
+            loads('{"active_build_account":{"account_id":"accounts/legacy"}}'),
+            "legacy",
+            id="token_minted_before_consolidation",
+        ),
+    ],
+)
+def test_active_account_id(identity: Identity, expected: str) -> None:
+    assert identity.active_account_id() == expected

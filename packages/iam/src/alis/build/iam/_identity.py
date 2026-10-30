@@ -229,6 +229,20 @@ class Identity:
         """
         return self.eap
 
+    def active_account_id(self) -> str:
+        """Returns the bare id of the active account, or ``""`` when none is set.
+
+        Reads ``active_account`` and falls back to the deprecated
+        ``active_build_account`` then ``active_ideate_account``, so tokens minted
+        before the issuer consolidated them still resolve. The result never
+        carries the ``accounts/`` prefix.
+        """
+        accounts = (self.active_account, self.active_build_account, self.active_ideate_account)
+        for account in accounts:
+            if account is not None and account.account_id:
+                return account.account_id.removeprefix("accounts/")
+        return ""
+
     def user(self) -> str:
         """Returns the ``users/{id}`` resource name, or ``""`` for non-users."""
         if self.type == IdentityType.USER:
