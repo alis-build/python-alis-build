@@ -296,6 +296,10 @@ def test_unknown_keys_ignored() -> None:
     [
         pytest.param('{"exp":"not-an-int"}', id="exp_string"),
         pytest.param('{"exp":1.5}', id="exp_float"),
+        pytest.param('{"exp":1.0}', id="exp_integral_float"),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":1e3,"seat":1}}}}}', id="plan_exponent"
+        ),
         pytest.param('{"sub":123}', id="sub_int"),
         pytest.param('{"groups":"a"}', id="groups_string"),
         pytest.param('{"groups":[1]}', id="groups_non_string"),
@@ -560,3 +564,123 @@ def test_jwt_carries_active_account_and_eap() -> None:
     assert identity.eap is True
     assert identity.active_account is not None
     assert identity.active_account.account_standing == AccountStanding(reason="NO_BILLING_DETAILS")
+
+
+# -- integer widths ---------------------------------------------------------
+#
+# Every expectation here is how other services' decoders treat the same JSON:
+# an integer that does not fit the field's width is refused there, so it must
+# be refused here before it is forwarded.
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param('{"exp":9223372036854775808}', id="exp_above_int64"),
+        pytest.param('{"exp":-9223372036854775809}', id="exp_below_int64"),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"seconds":9223372036854775808}}}',
+            id="seconds_above_int64",
+        ),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"nanos":2147483648}}}',
+            id="nanos_above_int32",
+        ),
+        pytest.param(
+            '{"active_account":{"member_blocked_until":{"nanos":-2147483649}}}',
+            id="nanos_below_int32",
+        ),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":2147483648,"seat":0}}}}}',
+            id="plan_above_int32",
+        ),
+        pytest.param(
+            '{"accounts":{"a":{"seats":{"1":{"plan":0,"seat":-2147483649}}}}}',
+            id="seat_below_int32",
+        ),
+    ],
+)
+def test_integers_outside_their_width_rejected(payload: str) -> None:
+    with pytest.raises(IdentityDecodeError, match="out of range"):
+        loads(payload)
+
+
+@pytest.mark.parametrize("exp", [9223372036854775807, -9223372036854775808])
+def test_int64_boundaries_accepted(exp: int) -> None:
+    assert loads(json.dumps({"exp": exp})).exp == exp
+
+
+def test_int32_boundary_accepted() -> None:
+    identity = loads('{"active_account":{"member_blocked_until":{"nanos":2147483647}}}')
+    assert identity.active_account is not None
+    assert identity.active_account.member_blocked_until == ClaimTime(nanos=2147483647)
+
+
+# -- seat keys --------------------------------------------------------------
+#
+# Seat keys are 32-bit integers in the format. Other services reject any other
+# key and re-encode valid ones in canonical decimal.
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        pytest.param("abc", id="letters"),
+        pytest.param(" 1", id="leading_space"),
+        pytest.param("1_0", id="underscore"),
+        pytest.param("", id="empty"),
+        pytest.param("2147483648", id="above_int32"),
+        pytest.param("+", id="sign_only"),
+        # Past Python's limit on converting long digit strings, so this must be
+        # refused before conversion or it escapes as a bare ValueError.
+        pytest.param("1" * 5000, id="past_int_string_limit"),
+    ],
+)
+def test_invalid_seat_keys_rejected(key: str) -> None:
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    with pytest.raises(IdentityDecodeError, match="seat key"):
+        loads(payload)
+
+
+@pytest.mark.parametrize(
+    ("key", "canonical"),
+    [
+        ("+1", "1"),
+        ("01", "1"),
+        ("-5", "-5"),
+        ("0", "0"),
+        ("000", "0"),
+        ("-0", "0"),
+        ("-0002147483648", "-2147483648"),
+        ("00000000002147483647", "2147483647"),
+    ],
+)
+def test_seat_keys_canonicalised(key: str, canonical: str) -> None:
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    identity = loads(payload)
+    assert identity.accounts is not None
+    assert list(identity.accounts["a"].seats or {}) == [canonical]
+
+
+def test_differently_spelled_keys_collide_last_wins() -> None:
+    identity = loads(
+        '{"accounts":{"a":{"seats":{"+1":{"plan":1,"seat":1},"01":{"plan":2,"seat":2}}}}}'
+    )
+    assert identity.accounts is not None
+    assert identity.accounts["a"].seats == {"1": Seat(plan=2, seat=2)}
+
+
+def test_long_zero_padded_seat_key_is_canonicalised() -> None:
+    key = "0" * 5000 + "1"
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    identity = loads(payload)
+    assert identity.accounts is not None
+    assert list(identity.accounts["a"].seats or {}) == ["1"]
+
+
+def test_forwarded_seat_keys_match_go() -> None:
+    out = dumps(loads('{"accounts":{"a":{"seats":{"+1":{"plan":1,"seat":1}}}}}')).decode()
+    assert (
+        '"accounts":{"a":{"seats":{"1":{"plan":1,"seat":1}},'
+        '"ideate_account_credit_limit":0,"ideate_user_credit_limit":0}}'
+    ) in out

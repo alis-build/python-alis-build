@@ -18,6 +18,7 @@ import base64
 import binascii
 import json
 import math
+import re
 from dataclasses import replace
 from decimal import Decimal
 from typing import Any, Final
@@ -285,13 +286,18 @@ def _require_str(payload: dict[str, Any], key: str) -> str:
     return value
 
 
-def _require_int(payload: dict[str, Any], key: str) -> int:
+def _require_int(payload: dict[str, Any], key: str, bits: int = 64) -> int:
     value = payload.get(key)
     if value is None:
         return 0
     # bool is an int subclass in Python, but the format wants a real integer.
     if not isinstance(value, int) or isinstance(value, bool):
         raise IdentityDecodeError(f"field {key!r} must be an integer, got {type(value).__name__}")
+    # Bounded to the signed width other services decode this field into, so an
+    # identity accepted here is never refused once it is forwarded.
+    limit = 1 << (bits - 1)
+    if not -limit <= value < limit:
+        raise IdentityDecodeError(f"field {key!r} is out of range for a {bits}-bit integer")
     return value
 
 
@@ -344,6 +350,31 @@ def _require_mapping(payload: dict[str, Any], key: str) -> dict[str, Any] | None
     return value
 
 
+# A seat key: an optional sign, then digits with any leading zeros split off.
+_SEAT_KEY: Final = re.compile(r"([+-]?)0*([0-9]+)")
+
+
+def _seat_key(key: str) -> str:
+    """Returns a seat key in canonical decimal, as other services re-encode it.
+
+    Seat keys are 32-bit integers in the format. Leading zeros are dropped
+    before converting, so a zero-padded key of any length is accepted as other
+    services accept it, and the conversion never meets Python's limit on long
+    integer strings.
+
+    Raises:
+        IdentityDecodeError: If the key is not a 32-bit integer.
+    """
+    match = _SEAT_KEY.fullmatch(key)
+    digits = match.group(2) if match else ""
+    if not match or len(digits) > 10:
+        raise IdentityDecodeError(f"seat key {key!r} is not a 32-bit integer")
+    number = int(match.group(1) + digits)
+    if not -(1 << 31) <= number < (1 << 31):
+        raise IdentityDecodeError(f"seat key {key!r} is not a 32-bit integer")
+    return str(number)
+
+
 def _parse_seats(raw: dict[str, Any] | None) -> dict[str, Seat] | None:
     if raw is None:
         return None
@@ -351,7 +382,11 @@ def _parse_seats(raw: dict[str, Any] | None) -> dict[str, Seat] | None:
     for key, value in raw.items():
         if not isinstance(value, dict):
             raise IdentityDecodeError(f"seat {key!r} must be an object")
-        seats[key] = Seat(plan=_require_int(value, "plan"), seat=_require_int(value, "seat"))
+        # A later, differently spelled key for the same seat overwrites an
+        # earlier one, as it does when other services decode the map.
+        seats[_seat_key(key)] = Seat(
+            plan=_require_int(value, "plan", bits=32), seat=_require_int(value, "seat", bits=32)
+        )
     return seats
 
 
@@ -397,7 +432,7 @@ def _parse_active_account(raw: dict[str, Any] | None) -> ActiveAccount | None:
         member_blocked_until=None
         if blocked is None
         else ClaimTime(
-            seconds=_require_int(blocked, "seconds"), nanos=_require_int(blocked, "nanos")
+            seconds=_require_int(blocked, "seconds"), nanos=_require_int(blocked, "nanos", bits=32)
         ),
         valid=_optional_bool(raw, "valid"),
         reason=_require_str(raw, "reason"),
