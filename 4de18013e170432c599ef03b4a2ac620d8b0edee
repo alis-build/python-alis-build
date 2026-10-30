@@ -1,0 +1,6 @@
+Add Identity.is_eap().
+
+What: returns the decoded eap claim; absent means False.
+Files: iam/_identity.py, tests/test_identity.py.
+Why: callers gate previews on the Early Access Program preference without reading the raw field. It grants no permissions.
+Checks: make check green.
