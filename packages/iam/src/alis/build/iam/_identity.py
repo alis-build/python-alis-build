@@ -179,6 +179,26 @@ class CreditStanding:
 
 
 @dataclass(frozen=True, slots=True)
+class Validity:
+    """Whether the user may do credit-costing work on their active account.
+
+    This is the accounts service's verdict on the member, made when the token
+    was minted.
+    """
+
+    valid: bool = False
+    """Decides the verdict. An unrecognised ``reason`` still means not valid."""
+
+    reason: str = ""
+    """Why not, as a ``Member.Validity.Reason`` name such as
+    ``"NO_BILLING_DETAILS"``: use it to choose what to offer the user. Empty
+    when valid."""
+
+    comments: str = ""
+    """Why not in words, safe to show the user as it is. Empty when valid."""
+
+
+@dataclass(frozen=True, slots=True)
 class Identity:
     """An authenticated user, service account, or system actor.
 
@@ -349,6 +369,22 @@ class Identity:
                 )
         return CreditStanding(known=True, allowed=True)
 
+    def credit_validity(self) -> Validity | None:
+        """Reports the member's credit verdict on their active account.
+
+        Credit-costing work is always charged to the active account, so that is
+        the account the verdict covers.
+
+        Returns:
+            The verdict, or ``None`` when the token has none. Callers then ask
+            the accounts service's ``AllowTransaction`` instead. A standing on
+            its own is not a verdict.
+        """
+        active = self.active_account
+        if active is None or active.valid is None:
+            return None
+        return Validity(valid=active.valid, reason=active.reason, comments=active.comments)
+
     def user(self) -> str:
         """Returns the ``users/{id}`` resource name, or ``""`` for non-users."""
         if self.type == IdentityType.USER:
@@ -397,4 +433,5 @@ __all__ = [
     "Identity",
     "IdentityType",
     "Seat",
+    "Validity",
 ]

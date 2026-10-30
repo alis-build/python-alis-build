@@ -19,6 +19,7 @@ from alis.build.iam import (
     Identity,
     IdentityType,
     SystemConfig,
+    Validity,
     dumps,
     from_unverified_jwt,
     loads,
@@ -459,3 +460,55 @@ def test_claim_time_as_datetime_truncates_to_microseconds() -> None:
 def test_out_of_range_claim_time_raises_value_error(seconds: int) -> None:
     with pytest.raises(ValueError, match="out of range"):
         ClaimTime(seconds=seconds).as_datetime()
+
+
+# -- credit validity ------------------------------------------------------------
+#
+# `valid` is left out when the issuer has no verdict, and false is minted as false.
+
+
+@pytest.mark.parametrize(
+    ("active", "expected"),
+    [
+        pytest.param(None, None, id="no_active_account"),
+        pytest.param({"account_id": "acme"}, None, id="no_verdict"),
+        pytest.param(
+            {"account_id": "acme", "account_standing": {"allow": True}},
+            None,
+            id="a_standing_is_not_a_verdict",
+        ),
+        pytest.param({"account_id": "acme", "valid": True}, Validity(valid=True), id="valid"),
+        pytest.param(
+            {
+                "account_id": "acme",
+                "valid": False,
+                "reason": "NO_BILLING_DETAILS",
+                "comments": "This account has no billing details.",
+            },
+            Validity(
+                valid=False,
+                reason="NO_BILLING_DETAILS",
+                comments="This account has no billing details.",
+            ),
+            id="not_valid",
+        ),
+    ],
+)
+def test_credit_validity(active: dict[str, object] | None, expected: Validity | None) -> None:
+    assert _with_active(active).credit_validity() == expected
+
+
+def test_credit_validity_survives_forwarding() -> None:
+    original = _with_active(
+        {
+            "account_id": "acme",
+            "valid": False,
+            "reason": "MEMBER_USAGE_LIMIT_REACHED",
+            "comments": "You have reached your personal usage limit.",
+        }
+    )
+    assert loads(dumps(original)).credit_validity() == Validity(
+        valid=False,
+        reason="MEMBER_USAGE_LIMIT_REACHED",
+        comments="You have reached your personal usage limit.",
+    )

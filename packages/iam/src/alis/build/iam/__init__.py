@@ -66,6 +66,7 @@ from ._identity import (
     Identity,
     IdentityType,
     Seat,
+    Validity,
 )
 from ._registry import (
     SystemConfig,
@@ -106,6 +107,7 @@ __all__ = [
     "MissingDependencyError",
     "Seat",
     "SystemConfig",
+    "Validity",
     "__version__",
     "add_admin_email",
     "add_system_email",
