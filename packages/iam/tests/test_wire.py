@@ -614,3 +614,60 @@ def test_int32_boundary_accepted() -> None:
     identity = loads('{"active_account":{"member_blocked_until":{"nanos":2147483647}}}')
     assert identity.active_account is not None
     assert identity.active_account.member_blocked_until == ClaimTime(nanos=2147483647)
+
+
+# -- seat keys --------------------------------------------------------------
+#
+# Seat keys are 32-bit integers in the format. Other services reject any other
+# key and re-encode valid ones in canonical decimal.
+
+
+@pytest.mark.parametrize("key", ["abc", " 1", "1_0", "", "2147483648", "+"])
+def test_invalid_seat_keys_rejected(key: str) -> None:
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    with pytest.raises(IdentityDecodeError, match="seat key"):
+        loads(payload)
+
+
+@pytest.mark.parametrize(
+    ("key", "canonical"),
+    [
+        ("+1", "1"),
+        ("01", "1"),
+        ("-5", "-5"),
+        ("0", "0"),
+        ("000", "0"),
+        ("-0", "0"),
+        ("-0002147483648", "-2147483648"),
+        ("00000000002147483647", "2147483647"),
+    ],
+)
+def test_seat_keys_canonicalised(key: str, canonical: str) -> None:
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    identity = loads(payload)
+    assert identity.accounts is not None
+    assert list(identity.accounts["a"].seats or {}) == [canonical]
+
+
+def test_differently_spelled_keys_collide_last_wins() -> None:
+    identity = loads(
+        '{"accounts":{"a":{"seats":{"+1":{"plan":1,"seat":1},"01":{"plan":2,"seat":2}}}}}'
+    )
+    assert identity.accounts is not None
+    assert identity.accounts["a"].seats == {"1": Seat(plan=2, seat=2)}
+
+
+def test_long_zero_padded_seat_key_is_canonicalised() -> None:
+    key = "0" * 5000 + "1"
+    payload = json.dumps({"accounts": {"a": {"seats": {key: {"plan": 1, "seat": 1}}}}})
+    identity = loads(payload)
+    assert identity.accounts is not None
+    assert list(identity.accounts["a"].seats or {}) == ["1"]
+
+
+def test_forwarded_seat_keys_match_go() -> None:
+    out = dumps(loads('{"accounts":{"a":{"seats":{"+1":{"plan":1,"seat":1}}}}}')).decode()
+    assert (
+        '"accounts":{"a":{"seats":{"1":{"plan":1,"seat":1}},'
+        '"ideate_account_credit_limit":0,"ideate_user_credit_limit":0}}'
+    ) in out
