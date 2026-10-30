@@ -1,0 +1,5 @@
+Prepare iam 0.2.0.
+
+What: version 0.2.0 in pyproject.toml, __version__ and uv.lock (lock format marker left unchanged); README sections for active_account_id, credit_standing, credit_validity, is_eap and the start_login sign-in options.
+Why: the release tag must match the declared version, and callers need the new surface documented.
+Checks: make check (930 tests), make check-bare (core imports with no extras). Not tagged.
